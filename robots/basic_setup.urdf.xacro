@@ -1,0 +1,122 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro" name="cu_ur5e">
+    <xacro:include filename="$(find cu_ur5e_description)/urdf/mounted_arm.urdf.xacro" />
+    <xacro:include filename="$(find cu_ur5e_description)/urdf/table.urdf.xacro" />
+
+    <material name="wall_gray">
+        <color rgba="0.7 0.7 0.7 1"/>
+    </material>
+
+    <material name="clearance_volume">
+        <color rgba="0.6 0.4 0.2 0.2"/>
+    </material>
+
+    <link name="wall_indent">
+        <visual>
+            <geometry>
+                <box size="0.18 0.74 2.0"/>
+            </geometry>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <material name="wall_gray"/>
+        </visual>
+        <collision>
+            <geometry>
+                <box size="0.18 0.74 2.0"/>
+            </geometry>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+        </collision>
+    </link>
+    <joint name="base_to_wall_indent" type="fixed">
+        <parent link="base"/>
+        <child link="wall_indent"/>
+        <origin xyz="-0.60 0.1 1" rpy="0 0 0"/>
+    </joint>
+
+    <link name="wall">
+        <visual>
+            <geometry>
+                <box size="0.1 4.5 2.0"/>
+            </geometry>
+            <origin xyz="-0.235 0 1.0" rpy="0 0 0"/>
+            <material name="wall_gray"/>
+        </visual>
+        <collision>
+            <geometry>
+                <box size="0.1 4.0 2.0"/>
+            </geometry>
+            <origin xyz="-0.235 0 1.0" rpy="0 0 0"/>
+        </collision>
+    </link>
+    <joint name="base_to_wall" type="fixed">
+        <parent link="base"/>
+        <child link="wall"/>
+        <origin xyz="-.5 0 0" rpy="0 0 0"/>
+    </joint>
+
+    <xacro:table length="0.8" width="1.6" height="0.72" name="table" />
+
+    <joint name="base_to_table" type="fixed">
+        <parent link="base"/>
+        <child link="table"/>
+        <origin xyz="1.425 0.0 0.0" rpy="0 0 ${tau/4}"/>
+    </joint>
+
+    <xacro:table length="0.8" width="1.6" height="0.72" name="operator_table" />
+    <joint name="base_to_operator_table" type="fixed">
+        <parent link="base"/>
+        <child link="operator_table"/>
+        <origin xyz="-0.29 ${-0.8-.75} 0.0" rpy="0 0 0"/>
+    </joint>
+
+    <xacro:property name="clearance_height" value="0.55"/>
+    <link name="operator_clearance">
+        <visual>
+            <geometry>
+                <box size="0.8 1.6 ${clearance_height}"/>
+            </geometry>
+            <origin xyz="0 0 0.0" rpy="0 0 0"/>
+            <material name="clearance_volume"/>
+        </visual>
+        <collision>
+            <geometry>
+                <box size="0.8 1.6 ${clearance_height}"/>
+            </geometry>
+            <origin xyz="0 0 0.0" rpy="0 0 0"/>
+        </collision>
+    </link>
+    <joint name="operator_clearance_joint" type="fixed">
+        <parent link="operator_table_top"/>
+        <child link="operator_clearance"/>
+        <origin xyz="0.0 0.0 ${clearance_height/2}" rpy="0 0 0"/>
+    </joint>
+
+    <xacro:table length="0.8" width="0.8" height="0.72" name="side_table" />
+    <joint name="base_to_side_table" type="fixed">
+        <parent link="base"/>
+        <child link="side_table"/>
+        <origin xyz="-0.29 ${0.4+0.45} 0.0" rpy="0 0 0"/>
+    </joint>
+
+    <xacro:property name="tripod_height" value="1.45"/>
+    <link name="tripod">
+        <visual>
+            <geometry>
+                <cylinder length="${tripod_height}" radius="0.15"/>
+                <origin xyz="0 0 0" rpy="0 0 0"/>
+            </geometry>
+            <material name="mount_gray" />
+        </visual>
+        <collision>
+            <geometry>
+                <cylinder length="${tripod_height}" radius="0.15"/>
+            </geometry>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+        </collision>
+    </link>
+
+    <joint name="base_to_tripod" type="fixed">
+        <parent link="base"/>
+        <child link="tripod"/>
+        <origin xyz="-0.4 -0.5 ${tripod_height/2}" rpy="0 0 0"/>
+    </joint>
+</robot>

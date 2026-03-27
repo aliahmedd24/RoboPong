@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="rviz" default="true" />
+
+    <!-- Load basic_setup.urdf.xacro as the robot description -->
+    <param name="robot_description"
+           command="$(find xacro)/xacro $(find group5robopong)/robots/basic_setup.urdf.xacro" />
+
+    <!-- Publish robot state -->
+    <node pkg="robot_state_publisher"
+          type="robot_state_publisher"
+          name="robot_state_publisher" />
+
+    <!-- Joint state publisher for visualization -->
+    <node pkg="joint_state_publisher"
+          type="joint_state_publisher"
+          name="joint_state_publisher" />
+
+    <!-- RViz -->
+    <node if="$(arg rviz)"
+          pkg="rviz"
+          type="rviz"
+          name="rviz" />
+
+</launch>
