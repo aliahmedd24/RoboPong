@@ -2,6 +2,9 @@
 <launch>
     <arg name="rviz" default="true" />
 
+    <!-- Hardware bringup -->
+    <include file="$(find cu_ur5e_bringup)/launch/hardware.launch" />
+
     <!-- Load basic_setup.urdf.xacro as the robot description -->
     <param name="robot_description"
            command="$(find xacro)/xacro $(find group5robopong)/robots/basic_setup.urdf.xacro" />

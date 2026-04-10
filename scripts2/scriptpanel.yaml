@@ -1,0 +1,58 @@
+config:
+    num_buttons_per_row: 3
+    button_width: 140
+    button_height: 60
+    font: LiberationMono:Bold
+scripts:
+    - label: Launch
+      script: launch_hardware.sh
+      tooltip: roslaunch main components
+      terminal: true
+      group: A-setup_robot
+    - label: Restart Robot Program
+      script: resend_robot_program.sh
+      tooltip: restart driver script on robot
+      group: A-setup_robot
+    - label: RQT reconfigure
+      script: rqt_reconfigure.sh
+      tooltip: RQT gui for dynamic_reconfigure
+      group: A-setup_robot
+    - label: Ready
+      script: move_to_ready.sh
+      tooltip: move arm to ready posture
+      group: B-move
+    - label: Center Above Table
+      script: move_above_table_center.sh
+      tooltip: |
+        move end effector right above table center
+        mostly to align mobile table
+      group: B-move
+    - label: Home
+      script: move_to_home.sh
+      tooltip: move to 0 posture
+      group: B-move
+    - label: Move Randomly in Grid
+      script: move_randomly_in_grid.sh
+      tooltip: |
+        move randomly in a grid above the table
+        Velocity can be changed through dynamic_reconfigure
+      terminal: true
+      group: Z-demo
+    - label: Present Gripper
+      script: move_to_present_gripper.sh
+      tooltip: present gripper to operator
+      group: B-move
+    - label: Twist Controller
+      script: twist_controller.sh
+      group: C-controllers
+      tooltip: |
+        Switch to Twist controller
+        Handle with care
+        This does not avoid collisions by itself
+        and uses frame arm_base
+    - label: Trajectory Controller
+      script: trajectory_controller.sh
+      group: C-controllers
+      tooltip: |
+        Switch to Trajectory Follower (default)
+        Required to move from MoveIt
