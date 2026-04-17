@@ -1,28 +1,40 @@
 <?xml version="1.0"?>
 <launch>
-    <arg name="rviz" default="true" />
-
-    <!-- Hardware bringup -->
+    <!--
+        RoboPong top-level launch.
+        hardware.launch already brings up the UR5e driver, MoveIt (/move_group),
+        the camera, robot_state_publisher, joint_state_publisher, and RViz.
+        Do not duplicate any of that here.
+    -->
     <include file="$(find cu_ur5e_bringup)/launch/hardware.launch" />
 
-    <!-- Load basic_setup.urdf.xacro as the robot description -->
-    <param name="robot_description"
-           command="$(find xacro)/xacro $(find group5robopong)/robots/basic_setup.urdf.xacro" />
+    <!-- ===== RoboPong nodes (add as each phase lands) ===== -->
 
-    <!-- Publish robot state -->
-    <node pkg="robot_state_publisher"
-          type="robot_state_publisher"
-          name="robot_state_publisher" />
+    <!-- Phase 2: vision -->
+    <arg name="camera_topic" default="/cam/color/image_raw" />
+    <arg name="cup_color"    default="green" />   <!-- "green" (placeholder) or "red" (real cup) -->
+    <arg name="z_height"     default="0.0" />     <!-- table surface height in base frame (measure in lab) -->
 
-    <!-- Joint state publisher for visualization -->
-    <node pkg="joint_state_publisher"
-          type="joint_state_publisher"
-          name="joint_state_publisher" />
+    <node pkg="group5robopong" type="vision_node.py" name="vision_node" output="screen">
+        <param name="camera_topic" value="$(arg camera_topic)" />
+        <param name="cup_color"    value="$(arg cup_color)" />
+        <param name="z_height"     value="$(arg z_height)" />
+    </node>
 
-    <!-- RViz -->
-    <node if="$(arg rviz)"
-          pkg="rviz"
-          type="rviz"
-          name="rviz" />
+    <!-- Phase 3: motion (throw planner/executor using /move_group)
+         Uncomment after tuning config/throw_profile.yaml in the lab.
+    <arg name="move_group"        default="manipulator" />
+    <arg name="throw_profile"     default="$(find group5robopong)/config/throw_profile.yaml" />
+    <arg name="allow_placeholder" default="false" />
+
+    <node pkg="group5robopong" type="motion_node.py" name="motion_node" output="screen">
+        <param name="move_group"        value="$(arg move_group)" />
+        <param name="throw_profile"     value="$(arg throw_profile)" />
+        <param name="allow_placeholder" value="$(arg allow_placeholder)" />
+    </node>
+    -->
+
+    <!-- Phase 4: game orchestration (state machine) -->
+    <!-- <node pkg="group5robopong" type="game_node.py" name="game_node" output="screen" /> -->
 
 </launch>

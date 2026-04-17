@@ -58,11 +58,15 @@ class VisionNode:
         rospy.loginfo("RoboPong Vision Node starting...")
 
         # --- Parameters ---
+        self.camera_topic   = rospy.get_param("~camera_topic", "/cam/color/image_raw")
         self.cup_color      = rospy.get_param("~cup_color", "green")  # "green" or "red"
         self.z_height       = rospy.get_param("~z_height", 0.0)
         self.min_area       = rospy.get_param("~min_area", 500)
         self.smooth_frames  = rospy.get_param("~smoothing_frames", 5)
+        self.jump_threshold = rospy.get_param("~jump_threshold_m", 0.15)
+        self.base_frame     = rospy.get_param("~base_frame", "base")
 
+        rospy.loginfo(f"Camera topic: {self.camera_topic}")
         rospy.loginfo(f"Cup color: {self.cup_color}")
         rospy.loginfo(f"Min contour area: {self.min_area}")
 
@@ -94,7 +98,7 @@ class VisionNode:
 
         # --- Subscriber ---
         self.sub = rospy.Subscriber(
-            "/cam/color/image_raw", Image, self.image_callback, queue_size=1,
+            self.camera_topic, Image, self.image_callback, queue_size=1,
             buff_size=2**24)
 
         rospy.loginfo("Vision Node ready. Waiting for frames...")
@@ -120,7 +124,12 @@ class VisionNode:
             data = yaml.safe_load(f)
         H = np.array(data["homography_matrix"]["data"],
                      dtype=np.float64).reshape(3, 3)
-        rospy.loginfo("Homography loaded OK")
+        ws = data.get("workspace", {})
+        self.ws_half_w = ws.get("width_m", 0.80) / 2.0
+        self.ws_half_h = ws.get("height_m", 0.60) / 2.0
+        rospy.loginfo(
+            f"Homography loaded OK (workspace "
+            f"{self.ws_half_w*2:.2f}m x {self.ws_half_h*2:.2f}m)")
         return H
 
     # -----------------------------------------------------------------------
@@ -129,58 +138,64 @@ class VisionNode:
 
     def image_callback(self, msg):
         try:
-            frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding="rgb8")
+            frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
         except Exception as e:
             rospy.logerr(f"cv_bridge error: {e}")
             return
 
-        # Step 1: Undistort
-        undistorted = cv2.undistort(frame, self.K, self.D)
+        # Detect on the raw frame. The homography was calibrated against
+        # distorted pixels, so undistorting here would introduce systematic error.
+        cup_pixel, debug_frame = self.detect_cup(frame)
 
-        # Step 2: Detect cup
-        cup_pixel, debug_frame = self.detect_cup(undistorted)
-
-        # Step 3: If detected, convert to world coords
+        world_xy = None
         if cup_pixel is not None:
-            world_x, world_y = self.pixel_to_world(cup_pixel)
+            wx, wy = self.pixel_to_world(cup_pixel)
 
-            # Add to smoothing buffer
-            self.position_buffer.append((world_x, world_y))
+            if abs(wx) > self.ws_half_w or abs(wy) > self.ws_half_h:
+                rospy.logdebug_throttle(
+                    2, f"Detection ({wx:.2f}, {wy:.2f}) outside workspace")
+            elif self.position_buffer:
+                prev_x = np.mean([p[0] for p in self.position_buffer])
+                prev_y = np.mean([p[1] for p in self.position_buffer])
+                if np.hypot(wx - prev_x, wy - prev_y) <= self.jump_threshold:
+                    world_xy = (wx, wy)
+                else:
+                    rospy.logdebug_throttle(
+                        2, "Detection jump exceeds threshold, skipped")
+            else:
+                world_xy = (wx, wy)
+
+        if world_xy is not None:
+            self.position_buffer.append(world_xy)
             self.last_detection_time = rospy.Time.now()
 
-            # Compute smoothed position
-            avg_x = np.mean([p[0] for p in self.position_buffer])
-            avg_y = np.mean([p[1] for p in self.position_buffer])
+            avg_x = float(np.mean([p[0] for p in self.position_buffer]))
+            avg_y = float(np.mean([p[1] for p in self.position_buffer]))
 
-            # Publish position
             pt = PointStamped()
-            pt.header.stamp = rospy.Time.now()
-            pt.header.frame_id = "base"
+            pt.header.stamp = msg.header.stamp
+            pt.header.frame_id = self.base_frame
             pt.point.x = avg_x
             pt.point.y = avg_y
             pt.point.z = self.z_height
             self.pub_position.publish(pt)
 
-            # Annotate debug frame
             u, v = cup_pixel
             cv2.putText(debug_frame,
                         f"Cup: ({avg_x:.3f}, {avg_y:.3f}) m",
                         (u + 15, v - 15),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-
             self.pub_status.publish(String(data="DETECTED"))
 
         else:
-            # Check if no detection for more than 2 seconds
             elapsed = (rospy.Time.now() - self.last_detection_time).to_sec()
             if elapsed > 2.0:
                 warning = f"WARNING: No cup detected for {elapsed:.1f}s"
                 self.pub_status.publish(String(data=warning))
                 rospy.logwarn_throttle(5, warning)
 
-        # Step 4: Publish debug image
         try:
-            debug_msg = self.bridge.cv2_to_imgmsg(debug_frame, encoding="rgb8")
+            debug_msg = self.bridge.cv2_to_imgmsg(debug_frame, encoding="bgr8")
             self.pub_debug.publish(debug_msg)
         except Exception as e:
             rospy.logerr(f"Debug publish error: {e}")
