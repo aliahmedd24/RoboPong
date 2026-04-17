@@ -7,7 +7,7 @@ throw a ball so it lands inside. University lab project.
 - Name: `robopong`
 - ROS: Noetic (Ubuntu 24)
 - Catkin workspace: `~/catkin_ws` (confirm on lab machine)
-- Build: `cd ~/catkin_ws && catkin_make --pkg robopong`
+- Build: `catkin build`
 
 ## Golden Rule
 The UR5e stack (bringup, MoveIt, camera, RViz) is managed by the lab admin.
