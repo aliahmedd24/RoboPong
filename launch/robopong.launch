@@ -15,7 +15,7 @@
     <arg name="cup_color"    default="green" />   <!-- "green" (placeholder) or "red" (real cup) -->
     <arg name="z_height"     default="0.0" />     <!-- table surface height in base frame (measure in lab) -->
 
-    <node pkg="group5robopong" type="vision_node.py" name="vision_node" output="screen">
+    <node pkg="robopong" type="vision_node.py" name="vision_node" output="screen">
         <param name="camera_topic" value="$(arg camera_topic)" />
         <param name="cup_color"    value="$(arg cup_color)" />
         <param name="z_height"     value="$(arg z_height)" />
@@ -24,10 +24,10 @@
     <!-- Phase 3: motion (throw planner/executor using /move_group)
          Uncomment after tuning config/throw_profile.yaml in the lab.
     <arg name="move_group"        default="manipulator" />
-    <arg name="throw_profile"     default="$(find group5robopong)/config/throw_profile.yaml" />
+    <arg name="throw_profile"     default="$(find robopong)/config/throw_profile.yaml" />
     <arg name="allow_placeholder" default="false" />
 
-    <node pkg="group5robopong" type="motion_node.py" name="motion_node" output="screen">
+    <node pkg="robopong" type="motion_node.py" name="motion_node" output="screen">
         <param name="move_group"        value="$(arg move_group)" />
         <param name="throw_profile"     value="$(arg throw_profile)" />
         <param name="allow_placeholder" value="$(arg allow_placeholder)" />
@@ -35,6 +35,6 @@
     -->
 
     <!-- Phase 4: game orchestration (state machine) -->
-    <!-- <node pkg="group5robopong" type="game_node.py" name="game_node" output="screen" /> -->
+    <!-- <node pkg="robopong" type="game_node.py" name="game_node" output="screen" /> -->
 
 </launch>

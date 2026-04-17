@@ -4,10 +4,10 @@ UR5e + overhead camera + custom scoop end-effector. Detect a cup on a table,
 throw a ball so it lands inside. University lab project.
 
 ## Package
-- Name: `group5robopong`
+- Name: `robopong`
 - ROS: Noetic (Ubuntu 24)
 - Catkin workspace: `~/catkin_ws` (confirm on lab machine)
-- Build: `cd ~/catkin_ws && catkin_make --pkg group5robopong`
+- Build: `cd ~/catkin_ws && catkin_make --pkg robopong`
 
 ## Golden Rule
 The UR5e stack (bringup, MoveIt, camera, RViz) is managed by the lab admin.
@@ -28,7 +28,7 @@ controller-switching helpers — read before writing new ones.
 ## Launch File Rule
 `launch/robopong.launch` must ONLY:
 1. `<include>` the hardware launch
-2. Add `<node>` tags for group5robopong scripts
+2. Add `<node>` tags for robopong scripts
 Nothing else — no RViz, no state publishers, no robot_description reload.
 
 ## Coordinate Frames
@@ -168,7 +168,7 @@ constants in `src/vision_node.py`. Try the red cup (real) via
 ### 4. Motion dry-run (placeholder profile, safe)
 ```bash
 # leave throw_profile.yaml placeholders, start motion_node directly:
-rosrun group5robopong motion_node.py _allow_placeholder:=true
+rosrun robopong motion_node.py _allow_placeholder:=true
 # then:
 rosservice call /robopong/go_ready
 rosservice call /robopong/throw   # moves to aimed ready, then no-op throw
@@ -186,7 +186,7 @@ Confirm the node reaches the ready pose safely before tuning waypoints.
    `launch/robopong.launch`.
 
 ## File map
-- `launch/robopong.launch` — includes `hardware.launch`, declares group5robopong nodes
+- `launch/robopong.launch` — includes `hardware.launch`, declares robopong nodes
 - `src/vision_node.py` — cup detection; publishes `/robopong/cup_position`
 - `src/motion_node.py` — MoveIt-based go_ready / throw services
 - `src/homography_calibration.py` — one-time pixel→world calibration utility
