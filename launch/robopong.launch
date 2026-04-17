@@ -6,7 +6,13 @@
         the camera, robot_state_publisher, joint_state_publisher, and RViz.
         Do not duplicate any of that here.
     -->
-    <include file="$(find cu_ur5e_bringup)/launch/hardware.launch" />
+    <include file="$(find cu_ur5e_bringup)/launch/hardware.launch">
+        <arg name="rviz" value="false" />
+    </include>
+
+    <param name="robot_description" command="xacro $(dirname)/../robots/basic_setup.urdf.xacro" />
+
+    <node pkg="rviz" type="rviz" name="$(anon rviz)" args="-d $(dirname)/../config/robopong.rviz" />
 
     <!-- ===== RoboPong nodes (add as each phase lands) ===== -->
 
