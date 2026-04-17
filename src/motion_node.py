@@ -8,12 +8,15 @@ aimed at a cup detected by vision_node.
 Subscribes to:
     /robopong/cup_position      - geometry_msgs/PointStamped  (ignored while mid-throw)
 
+Publishes:
+    /robopong/motion_status     - std_msgs/String  (IDLE / READY / THROWING / ERROR:<detail>)
+
 Services:
     /robopong/go_ready          - std_srvs/Trigger  (move to ready pose)
     /robopong/throw             - std_srvs/Trigger  (throw at latest cup_position)
 
 Parameters:
-    ~move_group            : MoveIt group name (default "manipulator")
+    ~move_group            : MoveIt group name (default "arm" — lab setup)
     ~throw_profile         : path to throw_profile.yaml (default: config/throw_profile.yaml)
     ~velocity_scaling      : MoveIt max_velocity_scaling_factor (default 1.0)
     ~acceleration_scaling  : MoveIt max_acceleration_scaling_factor (default 1.0)
@@ -29,6 +32,7 @@ import rospy
 import yaml
 import numpy as np
 
+from std_msgs.msg import String
 from std_srvs.srv import Trigger, TriggerResponse
 from geometry_msgs.msg import PointStamped
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
@@ -46,7 +50,7 @@ class MotionNode:
         rospy.loginfo("RoboPong Motion Node starting...")
 
         # --- Parameters ---
-        self.group_name        = rospy.get_param("~move_group", "manipulator")
+        self.group_name        = rospy.get_param("~move_group", "arm")
         self.profile_path      = rospy.get_param("~throw_profile", self._default_profile_path())
         self.vel_scale         = rospy.get_param("~velocity_scaling", 1.0)
         self.acc_scale         = rospy.get_param("~acceleration_scaling", 1.0)
@@ -80,6 +84,8 @@ class MotionNode:
         self.latest_cup = None
 
         # --- ROS I/O ---
+        self.pub_status = rospy.Publisher(
+            "/robopong/motion_status", String, queue_size=1, latch=True)
         self.sub_cup = rospy.Subscriber(
             "/robopong/cup_position", PointStamped, self._cup_cb, queue_size=1)
         self.srv_ready = rospy.Service(
@@ -87,7 +93,11 @@ class MotionNode:
         self.srv_throw = rospy.Service(
             "/robopong/throw", Trigger, self._handle_throw)
 
+        self._publish_status("IDLE")
         rospy.loginfo("Motion Node ready.")
+
+    def _publish_status(self, status):
+        self.pub_status.publish(String(data=status))
 
     # ------------------------------------------------------------------
     # Profile loading + resolution (dict → ordered list by joint name)
@@ -173,6 +183,7 @@ class MotionNode:
             return TriggerResponse(success=False, message="busy")
         try:
             ok, err = self._go_ready()
+            self._publish_status("READY" if ok else f"ERROR:go_ready:{err}")
             return TriggerResponse(success=ok, message=err or "ready")
         finally:
             self._release_busy()
@@ -192,7 +203,9 @@ class MotionNode:
         if not self._claim_busy():
             return TriggerResponse(success=False, message="busy")
         try:
+            self._publish_status("THROWING")
             ok, err = self._throw_at(cup.point.x, cup.point.y)
+            self._publish_status("IDLE" if ok else f"ERROR:throw:{err}")
             return TriggerResponse(success=ok, message=err or "throw ok")
         finally:
             self._release_busy()

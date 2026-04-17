@@ -7,23 +7,24 @@
 #
 # Units: joint angles in radians, times in seconds.
 #
-# Joint names must match the MoveIt group's active joints (see URDF/SRDF).
-# motion_node resolves dict → ordered list at load time; unknown keys or missing
-# joints will fail fast with a clear error.
+# Joint names must match the MoveIt group's active joints. The lab UR5e uses
+# tf_prefix "arm_" (set in cu_ur5e_bringup/hardware.launch) — hence every joint
+# below is arm_<name>. motion_node resolves dict → ordered list at load time
+# and fails fast with a clear error on any mismatch.
 # =============================================================================
 
 # "Ready to throw" pose — arm starts here before every throw.
 ready_joints:
-  shoulder_pan_joint:   0.0
-  shoulder_lift_joint: -1.5708
-  elbow_joint:          1.5708
-  wrist_1_joint:       -1.5708
-  wrist_2_joint:       -1.5708
-  wrist_3_joint:        0.0
+  arm_shoulder_pan_joint:   0.0
+  arm_shoulder_lift_joint: -1.5708
+  arm_elbow_joint:          1.5708
+  arm_wrist_1_joint:       -1.5708
+  arm_wrist_2_joint:       -1.5708
+  arm_wrist_3_joint:        0.0
 
 # Throw trajectory — list of JointTrajectoryPoints.
 # `joints` is a sparse dict: list only the joints that differ from ready_joints.
-#   - single-joint throw: one key per waypoint (e.g. just wrist_3_joint)
+#   - single-joint throw: one key per waypoint (e.g. just arm_wrist_3_joint)
 #   - multi-joint throw:  several keys per waypoint
 # `time_from_start` is seconds from throw start. motion_node shifts every
 # waypoint by the aim delta on the base joint, so the arc you define here is
@@ -37,16 +38,17 @@ waypoints:
 # Aim model:
 #   base_angle = atan2(cup_y - base_offset_y, cup_x - base_offset_x) + aim_trim
 # base_offset_* is the UR5 base position expressed in the cup_position frame.
-# vision_node publishes in frame "base"; if that frame's origin is the
-# workspace center (not the robot base), set base_offset_x to +1.55.
+# vision_node publishes in the 'base' frame (UR5 pivot at origin), so both
+# offsets are 0. If vision ever switches frames, update here accordingly.
 aim:
-  base_joint_name: shoulder_pan_joint
+  base_joint_name: arm_shoulder_pan_joint
   base_offset_x: 0.0
   base_offset_y: 0.0
   aim_trim: 0.0
 
 # Safety — throw is rejected if aim-adjusted base angle leaves this range.
-# Tighten once the expected cup region is characterised.
+# Starter envelope is ±π/2 (180° total arc); tighten once the cup region is
+# characterised and any workspace obstructions (tripod, wall) are verified.
 safety:
-  base_joint_min: -3.1416
-  base_joint_max:  3.1416
+  base_joint_min: -1.5708
+  base_joint_max:  1.5708

@@ -13,7 +13,7 @@
     <!-- Phase 2: vision -->
     <arg name="camera_topic" default="/cam/color/image_raw" />
     <arg name="cup_color"    default="green" />   <!-- "green" (placeholder) or "red" (real cup) -->
-    <arg name="z_height"     default="0.0" />     <!-- table surface height in base frame (measure in lab) -->
+    <arg name="z_height"     default="0.72" />    <!-- table surface Z in base frame (TF: base -> table_top.z = 0.720) -->
 
     <node pkg="robopong" type="vision_node.py" name="vision_node" output="screen">
         <param name="camera_topic" value="$(arg camera_topic)" />
@@ -22,17 +22,23 @@
     </node>
 
     <!-- Phase 3: motion (throw planner/executor using /move_group)
-         Uncomment after tuning config/throw_profile.yaml in the lab.
-    <arg name="move_group"        default="manipulator" />
-    <arg name="throw_profile"     default="$(find robopong)/config/throw_profile.yaml" />
-    <arg name="allow_placeholder" default="false" />
+         allow_placeholder defaults TRUE while throw_profile.yaml waypoints are
+         unfilled. After lab tuning, flip to FALSE to re-engage the placeholder
+         guard. velocity/acceleration scaling start conservative (0.1); ramp up
+         incrementally during tuning. -->
+    <arg name="move_group"          default="arm" />
+    <arg name="throw_profile"       default="$(find robopong)/config/throw_profile.yaml" />
+    <arg name="allow_placeholder"   default="true" />
+    <arg name="velocity_scaling"    default="0.1" />
+    <arg name="acceleration_scaling" default="0.1" />
 
     <node pkg="robopong" type="motion_node.py" name="motion_node" output="screen">
-        <param name="move_group"        value="$(arg move_group)" />
-        <param name="throw_profile"     value="$(arg throw_profile)" />
-        <param name="allow_placeholder" value="$(arg allow_placeholder)" />
+        <param name="move_group"            value="$(arg move_group)" />
+        <param name="throw_profile"         value="$(arg throw_profile)" />
+        <param name="allow_placeholder"     value="$(arg allow_placeholder)" />
+        <param name="velocity_scaling"      value="$(arg velocity_scaling)" />
+        <param name="acceleration_scaling"  value="$(arg acceleration_scaling)" />
     </node>
-    -->
 
     <!-- Phase 4: game orchestration (state machine) -->
     <!-- <node pkg="robopong" type="game_node.py" name="game_node" output="screen" /> -->

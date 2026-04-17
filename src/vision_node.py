@@ -3,19 +3,24 @@
 RoboPong - Vision Node
 -----------------------
 Detects the cup in the overhead camera feed and publishes its
-real-world position in the robot base frame.
+position in the robot base frame.
+
+The homography in config/homography.yaml maps raw pixels to
+workspace-centered (x, y). We then translate by the workspace
+center's pose in the base frame (homography.yaml: workspace.center_x_m /
+center_y_m) so the published PointStamped is genuinely in base.
 
 Subscribes to:
     /cam/color/image_raw        - raw camera feed
 
 Publishes to:
-    /robopong/cup_position      - geometry_msgs/PointStamped (x, y, z in robot base frame)
+    /robopong/cup_position      - geometry_msgs/PointStamped (x, y, z in base frame)
     /robopong/vision_status     - std_msgs/String (status messages)
     /robopong/vision_debug      - sensor_msgs/Image (annotated debug feed)
 
 Parameters:
     cup_color       : "green" (placeholder) or "red" (real cup)
-    z_height        : float, table height in robot base frame (default 0.0)
+    z_height        : float, table surface Z in base frame (default 0.72)
     min_area        : minimum contour area to consider (default 500)
     smoothing_frames: number of frames to average position over (default 5)
 """
@@ -60,7 +65,7 @@ class VisionNode:
         # --- Parameters ---
         self.camera_topic   = rospy.get_param("~camera_topic", "/cam/color/image_raw")
         self.cup_color      = rospy.get_param("~cup_color", "green")  # "green" or "red"
-        self.z_height       = rospy.get_param("~z_height", 0.0)
+        self.z_height       = rospy.get_param("~z_height", 0.72)
         self.min_area       = rospy.get_param("~min_area", 500)
         self.smooth_frames  = rospy.get_param("~smoothing_frames", 5)
         self.jump_threshold = rospy.get_param("~jump_threshold_m", 0.15)
@@ -70,14 +75,23 @@ class VisionNode:
         rospy.loginfo(f"Cup color: {self.cup_color}")
         rospy.loginfo(f"Min contour area: {self.min_area}")
 
-        # --- Load calibration files ---
+        # --- Load calibration ---
+        # Note: camera intrinsics are not loaded. The homography was calibrated
+        # against raw distorted pixels, so vision does not undistort. If
+        # intrinsics are ever needed, subscribe to <camera_topic_root>/camera_info
+        # live — the checked-in yaml disagrees with the live RealSense stream.
         pkg_dir = os.path.dirname(os.path.abspath(__file__))
         config_dir = os.path.join(pkg_dir, "../config")
 
-        self.K, self.D = self.load_intrinsics(
-            os.path.join(config_dir, "camera_intrinsics.yaml"))
         self.H = self.load_homography(
             os.path.join(config_dir, "homography.yaml"))
+
+        # --- base-frame overrides (fall back to homography.yaml workspace block) ---
+        self.ws_center_x = rospy.get_param("~workspace_center_x_m", self.ws_center_x)
+        self.ws_center_y = rospy.get_param("~workspace_center_y_m", self.ws_center_y)
+        rospy.loginfo(
+            f"Workspace center in {self.base_frame} frame: "
+            f"({self.ws_center_x:.3f}, {self.ws_center_y:.3f})")
 
         # --- CV Bridge ---
         self.bridge = CvBridge()
@@ -107,17 +121,6 @@ class VisionNode:
     # LOAD CALIBRATION
     # -----------------------------------------------------------------------
 
-    def load_intrinsics(self, path):
-        rospy.loginfo(f"Loading intrinsics from: {path}")
-        with open(path, 'r') as f:
-            data = yaml.safe_load(f)
-        cm = data["camera_matrix"]["data"]
-        dc = data["distortion_coefficients"]["data"]
-        K = np.array(cm, dtype=np.float64).reshape(3, 3)
-        D = np.array(dc, dtype=np.float64)
-        rospy.loginfo("Intrinsics loaded OK")
-        return K, D
-
     def load_homography(self, path):
         rospy.loginfo(f"Loading homography from: {path}")
         with open(path, 'r') as f:
@@ -127,6 +130,8 @@ class VisionNode:
         ws = data.get("workspace", {})
         self.ws_half_w = ws.get("width_m", 0.80) / 2.0
         self.ws_half_h = ws.get("height_m", 0.60) / 2.0
+        self.ws_center_x = float(ws.get("center_x_m", 0.0))
+        self.ws_center_y = float(ws.get("center_y_m", 0.0))
         rospy.loginfo(
             f"Homography loaded OK (workspace "
             f"{self.ws_half_w*2:.2f}m x {self.ws_half_h*2:.2f}m)")
@@ -172,17 +177,21 @@ class VisionNode:
             avg_x = float(np.mean([p[0] for p in self.position_buffer]))
             avg_y = float(np.mean([p[1] for p in self.position_buffer]))
 
+            # Translate from workspace-local (homography output) to base frame.
+            base_x = avg_x + self.ws_center_x
+            base_y = avg_y + self.ws_center_y
+
             pt = PointStamped()
             pt.header.stamp = msg.header.stamp
             pt.header.frame_id = self.base_frame
-            pt.point.x = avg_x
-            pt.point.y = avg_y
+            pt.point.x = base_x
+            pt.point.y = base_y
             pt.point.z = self.z_height
             self.pub_position.publish(pt)
 
             u, v = cup_pixel
             cv2.putText(debug_frame,
-                        f"Cup: ({avg_x:.3f}, {avg_y:.3f}) m",
+                        f"Cup base: ({base_x:.3f}, {base_y:.3f}) m",
                         (u + 15, v - 15),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
             self.pub_status.publish(String(data="DETECTED"))

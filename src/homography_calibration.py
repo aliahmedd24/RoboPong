@@ -2,18 +2,22 @@
 """
 RoboPong - Homography Calibration Script
 -----------------------------------------
-This script computes the homography matrix that maps pixel coordinates
-from the overhead camera to real-world (x, y) coordinates in the robot
-base frame.
+Computes the homography that maps overhead-camera pixels to a
+workspace-local (x, y) plane whose origin sits at the workspace center.
 
-Workspace is 80cm x 60cm, centered at (0, 0) relative to workspace center.
-The UR5 base is 1.55m from the workspace center.
+The output yaml also records the workspace center in the robot 'base'
+frame (WORKSPACE_CENTER_IN_BASE below), so vision_node can translate
+into base at runtime without needing TF.
+
+Workspace is 80 cm x 60 cm. Origin (0,0) of the calibration grid is the
+workspace center. Measure WORKSPACE_CENTER_IN_BASE via TF (e.g.
+`rosrun tf tf_echo base table_top`) before running this script.
 
 Usage:
     python3 homography_calibration.py
 
 Instructions:
-    - Click the 4 green tape corners in this EXACT order:
+    - Click the 4 workspace corners in this EXACT order:
         1. Top-Left
         2. Top-Right
         3. Bottom-Right
@@ -44,8 +48,8 @@ OUTPUT_PATH = os.path.join(
     "../config/homography.yaml"
 )
 
-# Real-world coordinates of the 4 workspace corners in METERS
-# Origin (0,0) = center of workspace
+# Real-world coordinates of the 4 workspace corners in METERS, in the
+# workspace-local frame (origin at workspace center).
 # Order: Top-Left, Top-Right, Bottom-Right, Bottom-Left
 WORLD_POINTS = np.array([
     [-0.40, -0.30],   # Top-Left
@@ -53,6 +57,12 @@ WORLD_POINTS = np.array([
     [ 0.40,  0.30],   # Bottom-Right
     [-0.40,  0.30],   # Bottom-Left
 ], dtype=np.float32)
+
+# Position of the workspace center in the robot 'base' frame.
+# Measure via TF: `rosrun tf tf_echo base table_top` (or equivalent).
+# vision_node adds this offset to homography output so cup_position is
+# published in base frame.
+WORKSPACE_CENTER_IN_BASE = (0.510, -0.110)
 
 # -----------------------------------------------------------------------
 # GLOBALS
@@ -197,9 +207,8 @@ def main():
                 "workspace": {
                     "width_m": 0.80,
                     "height_m": 0.60,
-                    "center_x_m": 0.0,
-                    "center_y_m": 0.0,
-                    "ur5_distance_to_center_m": 1.55
+                    "center_x_m": float(WORKSPACE_CENTER_IN_BASE[0]),
+                    "center_y_m": float(WORKSPACE_CENTER_IN_BASE[1]),
                 }
             }
 
