@@ -62,7 +62,7 @@ WORLD_POINTS = np.array([
 # Measure via TF: `rosrun tf tf_echo base table_top` (or equivalent).
 # vision_node adds this offset to homography output so cup_position is
 # published in base frame.
-WORKSPACE_CENTER_IN_BASE = (1.425, 0.000)
+WORKSPACE_CENTER_IN_BASE = (1.775, 0.000)
 
 # -----------------------------------------------------------------------
 # GLOBALS
