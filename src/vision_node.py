@@ -157,16 +157,29 @@ class VisionNode:
             wx, wy = self.pixel_to_world(cup_pixel)
 
             if abs(wx) > self.ws_half_w or abs(wy) > self.ws_half_h:
-                rospy.logdebug_throttle(
+                rospy.logwarn_throttle(
                     2, f"Detection ({wx:.2f}, {wy:.2f}) outside workspace")
             elif self.position_buffer:
-                prev_x = np.mean([p[0] for p in self.position_buffer])
-                prev_y = np.mean([p[1] for p in self.position_buffer])
-                if np.hypot(wx - prev_x, wy - prev_y) <= self.jump_threshold:
+                # If we haven't accepted a detection in a while, the buffer's
+                # mean is stale — otherwise a single large jump would reject
+                # every subsequent real detection and silently stop publishing.
+                stale = (rospy.Time.now() - self.last_detection_time).to_sec()
+                if stale > 1.0:
+                    rospy.logwarn(
+                        f"Position buffer stale ({stale:.1f}s), resetting")
+                    self.position_buffer.clear()
                     world_xy = (wx, wy)
                 else:
-                    rospy.logdebug_throttle(
-                        2, "Detection jump exceeds threshold, skipped")
+                    prev_x = np.mean([p[0] for p in self.position_buffer])
+                    prev_y = np.mean([p[1] for p in self.position_buffer])
+                    jump = np.hypot(wx - prev_x, wy - prev_y)
+                    if jump <= self.jump_threshold:
+                        world_xy = (wx, wy)
+                    else:
+                        rospy.logwarn_throttle(
+                            2,
+                            f"Detection jump {jump:.2f}m > "
+                            f"{self.jump_threshold:.2f}m, skipped")
             else:
                 world_xy = (wx, wy)
 
