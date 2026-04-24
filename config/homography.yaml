@@ -1,23 +1,18 @@
 homography_matrix:
   cols: 3
   data:
-  - 1.1370890613060732e-05
-  - 0.0013521571490537306
-  - -0.4304598273519764
-  - -0.0011653738734224252
-  - 5.9366877749214e-05
-  - 0.8702931873992461
-  - -6.115608076805777e-06
-  - 0.00045720547928421125
-  - 0.9999999999999999
+  - 0.0012684676808779845
+  - -5.367059334409205e-06
+  - -0.9260383849620185
+  - 1.2478953458797818e-05
+  - 0.001280707289739282
+  - -0.46653480926181995
+  - 1.7190924106977257e-05
+  - -4.773032879448503e-05
+  - 1.0
   rows: 3
 workspace:
-  # Workspace size (pixel->meter homography maps into a local frame with
-  # origin at the workspace center and axes aligned with the table).
-  width_m: 0.8
-  height_m: 0.6
-  # Workspace center expressed in the robot 'base' frame. Measured from TF:
-  # base -> table_top = (0.510, -0.110, 0.720). vision_node adds this offset
-  # so /robopong/cup_position is genuinely in base.
-  center_x_m: 0.510
-  center_y_m: -0.110
+  center_x_m: 1.775
+  center_y_m: 0.0
+  height_m: 0.8
+  width_m: 0.9
