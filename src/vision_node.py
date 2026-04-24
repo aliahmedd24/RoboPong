@@ -311,12 +311,12 @@ class VisionNode:
 
     def draw_workspace(self, frame):
         """Project workspace corners onto the image for visualization."""
-        # World corners of workspace
+        w, h = self.ws_half_w, self.ws_half_h
         world_corners = np.array([
-            [-0.40, -0.30],
-            [ 0.40, -0.30],
-            [ 0.40,  0.30],
-            [-0.40,  0.30]
+            [-w, -h],
+            [ w, -h],
+            [ w,  h],
+            [-w,  h],
         ], dtype=np.float32)
 
         # Invert homography to go world -> pixel
