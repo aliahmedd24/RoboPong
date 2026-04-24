@@ -6,9 +6,12 @@
         the camera, robot_state_publisher, joint_state_publisher, and RViz.
         Do not duplicate any of that here.
     -->
-    <include file="$(find cu_ur5e_bringup)/launch/hardware.launch">
+    <arg name="sim" default="false" />
+
+    <include unless="$(arg sim)" file="$(find cu_ur5e_bringup)/launch/hardware.launch">
         <arg name="rviz" value="false" />
     </include>
+    <include if="$(arg sim)" file="$(find cu_ur5e_moveit_config)/launch/demo.launch" />
 
     <param name="robot_description" command="xacro $(dirname)/../robots/basic_setup.urdf.xacro" />
 
@@ -17,12 +20,11 @@
     <!-- ===== RoboPong nodes (add as each phase lands) ===== -->
 
     <!-- Phase 2: vision -->
-    <arg name="camera_topic" default="/cam/color/image_raw" />
     <arg name="cup_color"    default="green" />   <!-- "green" (placeholder) or "red" (real cup) -->
     <arg name="z_height"     default="0.72" />    <!-- table surface Z in base frame (TF: base -> table_top.z = 0.720) -->
 
     <node pkg="robopong" type="vision_node.py" name="vision_node" output="screen">
-        <param name="camera_topic" value="$(arg camera_topic)" />
+        <param name="camera_topic" value="/cam/color/image_raw" />
         <param name="cup_color"    value="$(arg cup_color)" />
         <param name="z_height"     value="$(arg z_height)" />
     </node>

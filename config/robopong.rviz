@@ -5,8 +5,9 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Status1
+        - /MotionPlanning1
       Splitter Ratio: 0.6639344096183777
-    Tree Height: 739
+    Tree Height: 194
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -24,7 +25,7 @@ Panels:
   - Class: rviz/Time
     Name: Time
     SyncMode: 0
-    SyncSource: Cam
+    SyncSource: ""
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -263,7 +264,7 @@ Visualization Manager:
       Value: true
     - Acceleration_Scaling_Factor: 1
       Class: moveit_rviz_plugin/MotionPlanning
-      Enabled: false
+      Enabled: true
       JointsTab_Use_Radians: true
       Move Group Namespace: ""
       MoveIt_Allow_Approximate_IK: true
@@ -293,6 +294,123 @@ Visualization Manager:
           Expand Link Details: false
           Expand Tree: false
           Link Tree Style: Links in Alphabetic Order
+          arm_base:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          arm_base_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          arm_base_link_inertia:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          arm_ee_adapter:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          arm_flange:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          arm_flange_safety:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          arm_forearm_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          arm_shoulder_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          arm_tool0:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          arm_upper_arm_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          arm_wrist_1_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          arm_wrist_2_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          arm_wrist_3_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          base:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          mount:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          operator_clearance:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          operator_table:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          operator_table_top:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          side_table:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          side_table_top:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          table:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          table_top:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          tripod:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          wall:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          wall_indent:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
         Loop Animation: false
         Robot Alpha: 0.5
         Robot Color: 150; 50; 150
@@ -339,10 +457,127 @@ Visualization Manager:
           Expand Link Details: false
           Expand Tree: false
           Link Tree Style: Links in Alphabetic Order
+          arm_base:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          arm_base_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          arm_base_link_inertia:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          arm_ee_adapter:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          arm_flange:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          arm_flange_safety:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          arm_forearm_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          arm_shoulder_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          arm_tool0:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          arm_upper_arm_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          arm_wrist_1_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          arm_wrist_2_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          arm_wrist_3_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          base:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          mount:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          operator_clearance:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          operator_table:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          operator_table_top:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          side_table:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          side_table_top:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          table:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          table_top:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          tripod:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          wall:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          wall_indent:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
         Robot Alpha: 1
         Show Robot Collision: false
         Show Robot Visual: true
-      Value: false
+      Value: true
       Velocity_Scaling_Factor: 0.2
     - Class: rviz/MarkerArray
       Enabled: false
@@ -404,7 +639,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 1.3693705797195435
+      Distance: 5.014291286468506
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -420,23 +655,23 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.7997971177101135
+      Pitch: 0.36479753255844116
       Target Frame: <Fixed Frame>
-      Yaw: 5.993231296539307
+      Yaw: 6.0132317543029785
     Saved: ~
 Window Geometry:
   Cam:
     collapsed: false
   Displays:
     collapsed: false
-  Height: 1043
+  Height: 1011
   Hide Left Dock: false
   Hide Right Dock: false
   MotionPlanning:
     collapsed: false
   MotionPlanning - Trajectory Slider:
     collapsed: false
-  QMainWindow State: 000000ff00000000fd0000000400000000000001ea00000371fc020000000bfb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005d00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003f00000371000000cc00fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb000000280020002d0020005400720061006a006500630074006f0072007900200053006c006900640065007200000001c5000000440000000000000000fb0000001c004d006f00740069006f006e0050006c0061006e006e0069006e006700000001b5000001fb0000019600fffffffb00000044004d006f00740069006f006e0050006c0061006e006e0069006e00670020002d0020005400720061006a006500630074006f0072007900200053006c0069006400650072000000036c000000440000001700000017000000010000034800000371fc0200000005fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000600430061006d010000003f000000d90000001700fffffffb000000160056006900730069006f006e0020004d00610073006b010000011e000001e30000001700fffffffb0000000a005600690065007700730100000307000000a9000000a900fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000007800000003efc0100000002fb0000000800540069006d00650100000000000007800000034900fffffffb0000000800540069006d00650100000000000004500000000000000000000002420000037100000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000400000000000001ee00000351fc020000000bfb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005d00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003f00000150000000cc00fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb000000280020002d0020005400720061006a006500630074006f0072007900200053006c006900640065007200000001c5000000440000000000000000fb0000001c004d006f00740069006f006e0050006c0061006e006e0069006e00670100000195000001fb0000019600fffffffb00000044004d006f00740069006f006e0050006c0061006e006e0069006e00670020002d0020005400720061006a006500630074006f0072007900200053006c0069006400650072000000036c000000440000001700000017000000010000023e00000351fc0200000005fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000600430061006d010000003f000000cf0000001700fffffffb000000160056006900730069006f006e0020004d00610073006b0100000114000001cd0000001700fffffffb0000000a0056006900650077007301000002e7000000a9000000a900fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e100000197000000030000073e0000003efc0100000002fb0000000800540069006d006501000000000000073e0000033f00fffffffb0000000800540069006d00650100000000000004500000000000000000000003060000035100000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:
@@ -447,6 +682,6 @@ Window Geometry:
     collapsed: false
   Vision Mask:
     collapsed: false
-  Width: 1920
-  X: 1920
-  Y: 0
+  Width: 1854
+  X: 66
+  Y: 32

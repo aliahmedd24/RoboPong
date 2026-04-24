@@ -1,0 +1,9 @@
+{
+    "ros.distro": "one",
+    "python.autoComplete.extraPaths": [
+        "/opt/ros/one/lib/python3/dist-packages"
+    ],
+    "python.analysis.extraPaths": [
+        "/opt/ros/one/lib/python3/dist-packages"
+    ]
+}
