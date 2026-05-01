@@ -52,3 +52,15 @@ aim:
 safety:
   base_joint_min: -1.5708
   base_joint_max:  1.5708
+
+# Ruckig kinematic limits used by the time-optimal throw planner.
+# Lists are indexed by joint name (sorted alphabetically), then remapped
+# to the MoveIt active-joint order at load time. shoulder_lift and wrist_1
+# get higher headroom because they drive the throw; everything else is
+# capped conservatively.
+ruckig_limits:
+  joint_order: [arm_elbow_joint, arm_shoulder_lift_joint, arm_shoulder_pan_joint,
+                arm_wrist_1_joint, arm_wrist_2_joint, arm_wrist_3_joint]
+  max_velocity:     [3.14, 4.0,  3.14, 6.0,  3.14, 3.14]   # rad/s
+  max_acceleration: [5.0,  12.0, 5.0,  15.0, 5.0,  5.0]    # rad/s^2
+  max_jerk:         [20.0, 40.0, 20.0, 50.0, 20.0, 20.0]   # rad/s^3

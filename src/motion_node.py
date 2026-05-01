@@ -22,8 +22,13 @@ Parameters:
     ~acceleration_scaling  : MoveIt max_acceleration_scaling_factor (default 1.0)
     ~cup_position_timeout  : seconds after which latest cup_position is stale (default 2.0)
     ~allow_placeholder     : permit throws even if profile is placeholder (default False)
+    ~v_shoulder            : release velocity on arm_shoulder_lift_joint, rad/s
+                             (default 2.5; clamped to [0.5, 5.0]). Primary distance knob.
+    ~v_wrist               : release velocity on arm_wrist_1_joint, rad/s
+                             (default 4.0; clamped to [0.5, 8.0]). Secondary snap knob.
 """
 
+import json
 import os
 import sys
 import threading
@@ -39,6 +44,8 @@ from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 from moveit_msgs.msg import RobotTrajectory
 
 import moveit_commander
+
+from ruckig import InputParameter, OutputParameter, Result, Ruckig
 
 
 class MotionNode:
@@ -56,6 +63,10 @@ class MotionNode:
         self.acc_scale         = rospy.get_param("~acceleration_scaling", 1.0)
         self.cup_timeout       = rospy.get_param("~cup_position_timeout", 2.0)
         self.allow_placeholder = rospy.get_param("~allow_placeholder", False)
+        self.v_shoulder = float(np.clip(
+            rospy.get_param("~v_shoulder", 2.5), 0.5, 5.0))
+        self.v_wrist = float(np.clip(
+            rospy.get_param("~v_wrist", 4.0), 0.5, 8.0))
 
         # --- MoveIt ---
         moveit_commander.roscpp_initialize(sys.argv)
@@ -68,10 +79,21 @@ class MotionNode:
 
         # --- Throw profile (load + resolve against active joint order) ---
         raw = self._load_profile(self.profile_path)
-        self.ready_ordered, self.waypoints_ordered, self.aim, self.safety = \
-            self._resolve_profile(raw)
+        (self.ready_ordered, self.waypoints_ordered, self.aim, self.safety,
+         self.ruckig_limits) = self._resolve_profile(raw)
         self._profile_is_placeholder = all(
             w == self.ready_ordered for _, w in self.waypoints_ordered)
+        rospy.loginfo(
+            f"Ruckig limits loaded: v={self.ruckig_limits['max_velocity']} "
+            f"a={self.ruckig_limits['max_acceleration']} "
+            f"j={self.ruckig_limits['max_jerk']}")
+        rospy.loginfo(
+            f"Throw release velocities: v_shoulder={self.v_shoulder:.3f} rad/s, "
+            f"v_wrist={self.v_wrist:.3f} rad/s")
+
+        # Joint indices for the throw planner (kinematic-chain order from MoveIt)
+        self._lift_idx = self.joint_names.index("arm_shoulder_lift_joint")
+        self._wrist1_idx = self.joint_names.index("arm_wrist_1_joint")
         if self._profile_is_placeholder and not self.allow_placeholder:
             rospy.logwarn(
                 "Throw profile is placeholder (all waypoints == ready_joints); "
@@ -86,6 +108,8 @@ class MotionNode:
         # --- ROS I/O ---
         self.pub_status = rospy.Publisher(
             "/robopong/motion_status", String, queue_size=1, latch=True)
+        self.pub_throw_debug = rospy.Publisher(
+            "/robopong/throw_debug", String, queue_size=1, latch=True)
         self.sub_cup = rospy.Subscriber(
             "/robopong/cup_position", PointStamped, self._cup_cb, queue_size=1)
         self.srv_ready = rospy.Service(
@@ -166,7 +190,27 @@ class MotionNode:
         safety.setdefault("base_joint_min", -np.pi)
         safety.setdefault("base_joint_max",  np.pi)
 
-        return ready_ordered, waypoints_ordered, aim, safety
+        # Ruckig kinematic limits — remap from yaml joint_order to active order
+        rl_raw = raw.get("ruckig_limits")
+        if rl_raw is None:
+            raise RuntimeError("throw profile missing required key: ruckig_limits")
+        yaml_order = rl_raw.get("joint_order")
+        if yaml_order is None:
+            raise RuntimeError("ruckig_limits.joint_order is required")
+        if set(yaml_order) != active_set:
+            raise RuntimeError(
+                f"ruckig_limits.joint_order mismatch. Got {yaml_order}  "
+                f"Active joints: {active}")
+        ruckig_limits = {}
+        for key in ("max_velocity", "max_acceleration", "max_jerk"):
+            vals = rl_raw.get(key)
+            if vals is None or len(vals) != len(yaml_order):
+                raise RuntimeError(
+                    f"ruckig_limits.{key} must be a list of length {len(yaml_order)}")
+            by_name = dict(zip(yaml_order, vals))
+            ruckig_limits[key] = [float(by_name[name]) for name in active]
+
+        return ready_ordered, waypoints_ordered, aim, safety, ruckig_limits
 
     # ------------------------------------------------------------------
     # Callbacks
@@ -260,33 +304,116 @@ class MotionNode:
             return (False, "failed to reach aimed ready pose")
         self.group.stop()
 
-        # Execute throw trajectory (waypoints shifted by aim delta on base joint)
-        traj = self._build_throw_trajectory(aimed_ready)
+        # Ruckig-planned throw: A (aimed ready) → B (release) → C (follow-through),
+        # concatenated and executed as one trajectory.
+        jt, err = self._plan_throw_ruckig(base_angle)
+        if jt is None:
+            return (False, err)
+        traj = RobotTrajectory()
+        traj.joint_trajectory = jt
         ok = self.group.execute(traj, wait=True)
         self.group.stop()
-        return (ok, None if ok else "throw trajectory execute failed")
+        return (ok, None if ok else "execution failed")
 
-    def _build_throw_trajectory(self, aimed_ready):
-        base_idx = self.aim["_base_idx"]
-        aim_delta = aimed_ready[base_idx] - self.ready_ordered[base_idx]
+    def _plan_throw_ruckig(self, aim_angle):
+        """
+        Plans A→B (throw) and B→C (follow-through) as two sequential Ruckig
+        state-to-state calls. Both are pre-computed, concatenated into one
+        JointTrajectory, executed as a single group.execute() call. Ball
+        leaves scoop during A→B execution.
+        """
+        n = len(self.joint_names)
+        otg = Ruckig(n, 0.001)         # 1 ms control cycle
+        inp = InputParameter(n)
+        out = OutputParameter(n)
+
+        inp.max_velocity     = list(self.ruckig_limits["max_velocity"])
+        inp.max_acceleration = list(self.ruckig_limits["max_acceleration"])
+        inp.max_jerk         = list(self.ruckig_limits["max_jerk"])
+
+        pan_idx    = self.aim["_base_idx"]
+        lift_idx   = self._lift_idx
+        wrist1_idx = self._wrist1_idx
+
+        # State A: aimed ready (other joints from ready_joints, pan = aim_angle)
+        state_A_pos = list(self.ready_ordered)
+        state_A_pos[pan_idx] = aim_angle
+
+        # State B: shoulder_lift and wrist_1 swept to release angles
+        state_B_pos = list(state_A_pos)
+        state_B_pos[lift_idx]   = -0.7377
+        state_B_pos[wrist1_idx] = -0.1712
+
+        # State C: follow-through past release, both joints back near rest
+        state_C_pos = list(state_A_pos)
+        state_C_pos[lift_idx]   = -0.40
+        state_C_pos[wrist1_idx] =  0.20
+
+        state_B_vel = [0.0] * n
+        state_B_vel[lift_idx]   = self.v_shoulder
+        state_B_vel[wrist1_idx] = self.v_wrist
+
+        zeros = [0.0] * n
+
+        def sample_segment(pos_start, vel_start, acc_start,
+                           pos_end,   vel_end,   acc_end):
+            inp.current_position     = list(pos_start)
+            inp.current_velocity     = list(vel_start)
+            inp.current_acceleration = list(acc_start)
+            inp.target_position      = list(pos_end)
+            inp.target_velocity      = list(vel_end)
+            inp.target_acceleration  = list(acc_end)
+
+            points = []
+            t = 0.0
+            while True:
+                res = otg.update(inp, out)
+                if res == Result.Error:
+                    return None
+                pt = JointTrajectoryPoint()
+                pt.positions     = list(out.new_position)
+                pt.velocities    = list(out.new_velocity)
+                pt.accelerations = list(out.new_acceleration)
+                pt.time_from_start = rospy.Duration.from_sec(t)
+                points.append(pt)
+                if res == Result.Finished:
+                    break
+                out.pass_to_input(inp)
+                t += 0.001
+            return points, t
+
+        ab = sample_segment(state_A_pos, zeros,       zeros,
+                            state_B_pos, state_B_vel, zeros)
+        if ab is None:
+            return None, "Ruckig failed on A->B segment"
+        points_AB, duration_AB = ab
+
+        bc = sample_segment(state_B_pos, state_B_vel, zeros,
+                            state_C_pos, zeros,       zeros)
+        if bc is None:
+            return None, "Ruckig failed on B->C segment"
+        points_BC, duration_BC = bc
+
+        offset = rospy.Duration.from_sec(duration_AB)
+        for pt in points_BC:
+            pt.time_from_start += offset
 
         jt = JointTrajectory()
         jt.joint_names = list(self.joint_names)
-        for t, joints in self.waypoints_ordered:
-            pt = JointTrajectoryPoint()
-            shifted = list(joints)
-            shifted[base_idx] += aim_delta
-            pt.positions = shifted
-            pt.time_from_start = rospy.Duration.from_sec(t)
-            jt.points.append(pt)
+        jt.points = points_AB + points_BC
 
-        traj = RobotTrajectory()
-        traj.joint_trajectory = jt
-        # NOTE: MoveIt may re-time this to respect joint velocity/accel limits.
-        # If throw speed is insufficient after tuning, switch to sending the
-        # JointTrajectory directly via the controller's FollowJointTrajectory
-        # action instead of group.execute().
-        return traj
+        debug = {
+            "aim_angle_rad": round(float(aim_angle), 4),
+            "v_shoulder":    round(self.v_shoulder, 4),
+            "v_wrist":       round(self.v_wrist, 4),
+            "duration_AB_s": round(duration_AB, 4),
+            "duration_BC_s": round(duration_BC, 4),
+            "total_points":  len(jt.points),
+        }
+        self.pub_throw_debug.publish(String(data=json.dumps(debug)))
+        rospy.loginfo(f"Ruckig throw plan: {debug}")
+
+        return jt, None
 
     def spin(self):
         rospy.spin()

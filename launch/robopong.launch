@@ -39,6 +39,8 @@
     <arg name="allow_placeholder"   default="true" />
     <arg name="velocity_scaling"    default="0.1" />
     <arg name="acceleration_scaling" default="0.1" />
+    <arg name="v_shoulder"          default="2.5" />   <!-- primary distance knob (rad/s) -->
+    <arg name="v_wrist"             default="4.0" />   <!-- secondary snap knob (rad/s) -->
 
     <node pkg="robopong" type="motion_node.py" name="motion_node" output="screen">
         <param name="move_group"            value="$(arg move_group)" />
@@ -46,6 +48,8 @@
         <param name="allow_placeholder"     value="$(arg allow_placeholder)" />
         <param name="velocity_scaling"      value="$(arg velocity_scaling)" />
         <param name="acceleration_scaling"  value="$(arg acceleration_scaling)" />
+        <param name="v_shoulder"            value="$(arg v_shoulder)" />
+        <param name="v_wrist"               value="$(arg v_wrist)" />
     </node>
 
     <!-- Phase 4: game orchestration (state machine) -->
