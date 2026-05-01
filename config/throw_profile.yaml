@@ -14,13 +14,16 @@
 # =============================================================================
 
 # "Ready to throw" pose — arm starts here before every throw.
+# Lab-confirmed (captured from /joint_states on the UR5e). pan_joint is
+# overridden by the aim model at throw time, so its value here is just a
+# neutral starting point.
 ready_joints:
-  arm_shoulder_pan_joint:   0.0
-  arm_shoulder_lift_joint: -1.5708
-  arm_elbow_joint:          1.5708
-  arm_wrist_1_joint:       -1.5708
-  arm_wrist_2_joint:       -1.5708
-  arm_wrist_3_joint:        0.0
+  arm_shoulder_pan_joint:  -0.154633
+  arm_shoulder_lift_joint: -1.237725
+  arm_elbow_joint:          2.560938
+  arm_wrist_1_joint:       -1.371239
+  arm_wrist_2_joint:        1.376385
+  arm_wrist_3_joint:        2.887977
 
 # Throw trajectory — list of JointTrajectoryPoints.
 # `joints` is a sparse dict: list only the joints that differ from ready_joints.
