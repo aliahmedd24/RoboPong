@@ -356,7 +356,8 @@ class MotionNode:
         zeros = [0.0] * n
 
         def sample_segment(pos_start, vel_start, acc_start,
-                           pos_end,   vel_end,   acc_end):
+                           pos_end,   vel_end,   acc_end,
+                           include_anchor):
             inp.current_position     = list(pos_start)
             inp.current_velocity     = list(vel_start)
             inp.current_acceleration = list(acc_start)
@@ -365,7 +366,19 @@ class MotionNode:
             inp.target_acceleration  = list(acc_end)
 
             points = []
-            t = 0.0
+            # Ruckig.update() advances one cycle before returning, so its first
+            # sample is at t=0.001s, not t=0. For A->B we prepend an anchor at
+            # the exact start state so MoveIt's first-point check passes; for
+            # B->C the anchor is already the last point of A->B (skip it).
+            if include_anchor:
+                anchor = JointTrajectoryPoint()
+                anchor.positions     = list(pos_start)
+                anchor.velocities    = list(vel_start)
+                anchor.accelerations = list(acc_start)
+                anchor.time_from_start = rospy.Duration(0)
+                points.append(anchor)
+
+            t = 0.001
             while True:
                 res = otg.update(inp, out)
                 if res == Result.Error:
@@ -383,13 +396,15 @@ class MotionNode:
             return points, t
 
         ab = sample_segment(state_A_pos, zeros,       zeros,
-                            state_B_pos, state_B_vel, zeros)
+                            state_B_pos, state_B_vel, zeros,
+                            include_anchor=True)
         if ab is None:
             return None, "Ruckig failed on A->B segment"
         points_AB, duration_AB = ab
 
         bc = sample_segment(state_B_pos, state_B_vel, zeros,
-                            state_C_pos, zeros,       zeros)
+                            state_C_pos, zeros,       zeros,
+                            include_anchor=False)
         if bc is None:
             return None, "Ruckig failed on B->C segment"
         points_BC, duration_BC = bc
