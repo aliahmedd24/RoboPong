@@ -26,17 +26,32 @@ ready_joints:
   arm_wrist_3_joint:        2.887977
 
 # Throw trajectory — list of JointTrajectoryPoints.
-# `joints` is a sparse dict: list only the joints that differ from ready_joints.
-#   - single-joint throw: one key per waypoint (e.g. just arm_wrist_3_joint)
-#   - multi-joint throw:  several keys per waypoint
-# `time_from_start` is seconds from throw start. motion_node shifts every
-# waypoint by the aim delta on the base joint, so the arc you define here is
-# relative to the aimed ready pose.
+# DEPRECATED: kept only so the placeholder-guard logic still runs. The Ruckig
+# planner ignores this block and uses release_joints / follow_through_joints
+# below instead.
 waypoints:
   - time_from_start: 0.0
-    joints: {}                       # start = ready
+    joints: {}
   - time_from_start: 0.5
-    joints: {}                       # TUNE — currently placeholder (no motion)
+    joints: {}
+
+# State B — joint angles at the throw release point (ball leaves the scoop).
+# Sparse dict: list only joints that differ from ready_joints. Joint VELOCITIES
+# at this point are set separately via the ~v_shoulder and ~v_wrist ROS params
+# (motion_node), not here. Pan is overridden by the aim model.
+#
+# To capture: jog the arm to the desired release pose (teach pendant or
+# scripts2/move_to_*.sh), then `rostopic echo /joint_states -n 1`.
+release_joints:
+  arm_shoulder_lift_joint: -0.7377   # TUNE — these values caused a self-collision
+  arm_wrist_1_joint:       -0.1712   # TUNE — replace with lab-captured pose
+
+# State C — follow-through pose. Both throw joints decelerate back to zero
+# velocity here. Should be a safe pose with no contact and no operator in arc.
+# Same sparse-dict format as release_joints.
+follow_through_joints:
+  arm_shoulder_lift_joint: -0.40     # TUNE
+  arm_wrist_1_joint:        0.20     # TUNE
 
 # Aim model:
 #   base_angle = atan2(cup_y - base_offset_y, cup_x - base_offset_x) + aim_trim

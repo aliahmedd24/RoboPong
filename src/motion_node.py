@@ -80,9 +80,10 @@ class MotionNode:
         # --- Throw profile (load + resolve against active joint order) ---
         raw = self._load_profile(self.profile_path)
         (self.ready_ordered, self.waypoints_ordered, self.aim, self.safety,
-         self.ruckig_limits) = self._resolve_profile(raw)
-        self._profile_is_placeholder = all(
-            w == self.ready_ordered for _, w in self.waypoints_ordered)
+         self.ruckig_limits, self.release_ordered,
+         self.follow_through_ordered) = self._resolve_profile(raw)
+        self._profile_is_placeholder = (
+            self.release_ordered == self.ready_ordered)
         rospy.loginfo(
             f"Ruckig limits loaded: v={self.ruckig_limits['max_velocity']} "
             f"a={self.ruckig_limits['max_acceleration']} "
@@ -96,9 +97,9 @@ class MotionNode:
         self._wrist1_idx = self.joint_names.index("arm_wrist_1_joint")
         if self._profile_is_placeholder and not self.allow_placeholder:
             rospy.logwarn(
-                "Throw profile is placeholder (all waypoints == ready_joints); "
-                "/robopong/throw will refuse. Tune throw_profile.yaml or set "
-                "~allow_placeholder:=true for dry runs.")
+                "Throw profile placeholder (release_joints == ready_joints); "
+                "/robopong/throw will refuse. Populate release_joints in "
+                "throw_profile.yaml or set ~allow_placeholder:=true.")
 
         # --- State ---
         self._state = self.STATE_IDLE
@@ -210,7 +211,29 @@ class MotionNode:
             by_name = dict(zip(yaml_order, vals))
             ruckig_limits[key] = [float(by_name[name]) for name in active]
 
-        return ready_ordered, waypoints_ordered, aim, safety, ruckig_limits
+        # release_joints / follow_through_joints — sparse dicts, fill missing
+        # joints from ready_joints. Pan is overridden by aim at throw time.
+        def resolve_sparse(block_name):
+            block = raw.get(block_name)
+            if block is None:
+                raise RuntimeError(f"throw profile missing required key: {block_name}")
+            block = block or {}
+            bad = set(block.keys()) - active_set
+            if bad:
+                raise RuntimeError(
+                    f"{block_name} has unknown joints: {sorted(bad)}")
+            ordered = list(ready_ordered)
+            for name, val in block.items():
+                if val is None:
+                    raise RuntimeError(f"{block_name}.{name} is null — fill it in")
+                ordered[active.index(name)] = float(val)
+            return ordered
+
+        release_ordered        = resolve_sparse("release_joints")
+        follow_through_ordered = resolve_sparse("follow_through_joints")
+
+        return (ready_ordered, waypoints_ordered, aim, safety, ruckig_limits,
+                release_ordered, follow_through_ordered)
 
     # ------------------------------------------------------------------
     # Callbacks
@@ -339,15 +362,13 @@ class MotionNode:
         state_A_pos = list(self.ready_ordered)
         state_A_pos[pan_idx] = aim_angle
 
-        # State B: shoulder_lift and wrist_1 swept to release angles
-        state_B_pos = list(state_A_pos)
-        state_B_pos[lift_idx]   = -0.7377
-        state_B_pos[wrist1_idx] = -0.1712
+        # State B: release pose from yaml (release_joints), aim applied
+        state_B_pos = list(self.release_ordered)
+        state_B_pos[pan_idx] = aim_angle
 
-        # State C: follow-through past release, both joints back near rest
-        state_C_pos = list(state_A_pos)
-        state_C_pos[lift_idx]   = -0.40
-        state_C_pos[wrist1_idx] =  0.20
+        # State C: follow-through pose from yaml (follow_through_joints), aim applied
+        state_C_pos = list(self.follow_through_ordered)
+        state_C_pos[pan_idx] = aim_angle
 
         state_B_vel = [0.0] * n
         state_B_vel[lift_idx]   = self.v_shoulder
