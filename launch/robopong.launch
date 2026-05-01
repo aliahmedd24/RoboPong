@@ -32,15 +32,16 @@
     <!-- Phase 3: motion (throw planner/executor using /move_group)
          allow_placeholder defaults TRUE while throw_profile.yaml waypoints are
          unfilled. After lab tuning, flip to FALSE to re-engage the placeholder
-         guard. velocity/acceleration scaling start conservative (0.1); ramp up
-         incrementally during tuning. -->
-    <arg name="move_group"          default="arm" />
-    <arg name="throw_profile"       default="$(find robopong)/config/throw_profile.yaml" />
-    <arg name="allow_placeholder"   default="true" />
-    <arg name="velocity_scaling"    default="0.1" />
-    <arg name="acceleration_scaling" default="0.1" />
-    <arg name="v_shoulder"          default="2.5" />   <!-- primary distance knob (rad/s) -->
-    <arg name="v_wrist"             default="4.0" />   <!-- secondary snap knob (rad/s) -->
+         guard. velocity_scale uniformly scales every waypoint's velocities at
+         plan time — start low (e.g. 0.25) and ramp up. velocity/acceleration
+         scaling are MoveIt's planning-stage limits; left at 1.0 because the
+         throw is executed via group.execute() on a Ruckig-built trajectory. -->
+    <arg name="move_group"           default="arm" />
+    <arg name="throw_profile"        default="$(find robopong)/config/throw_profile.yaml" />
+    <arg name="allow_placeholder"    default="true" />
+    <arg name="velocity_scaling"     default="1.0" />
+    <arg name="acceleration_scaling" default="1.0" />
+    <arg name="velocity_scale"       default="1.0" />  <!-- multiplier on every waypoint velocity in throw_profile.yaml -->
 
     <node pkg="robopong" type="motion_node.py" name="motion_node" output="screen">
         <param name="move_group"            value="$(arg move_group)" />
@@ -48,8 +49,7 @@
         <param name="allow_placeholder"     value="$(arg allow_placeholder)" />
         <param name="velocity_scaling"      value="$(arg velocity_scaling)" />
         <param name="acceleration_scaling"  value="$(arg acceleration_scaling)" />
-        <param name="v_shoulder"            value="$(arg v_shoulder)" />
-        <param name="v_wrist"               value="$(arg v_wrist)" />
+        <param name="velocity_scale"        value="$(arg velocity_scale)" />
     </node>
 
     <!-- Phase 4: game orchestration (state machine) -->

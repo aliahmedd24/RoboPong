@@ -1,57 +1,89 @@
 # =============================================================================
 # RoboPong throw profile
 # =============================================================================
-# ALL NUMERIC VALUES BELOW ARE PLACEHOLDERS — tune in the lab before enabling.
-# motion_node refuses to execute /robopong/throw while every waypoint is
-# identical to ready_joints (override with ~allow_placeholder:=true for dry runs).
-#
-# Units: joint angles in radians, times in seconds.
+# Units: joint angles in radians, velocities in rad/s, times in seconds.
 #
 # Joint names must match the MoveIt group's active joints. The lab UR5e uses
 # tf_prefix "arm_" (set in cu_ur5e_bringup/hardware.launch) — hence every joint
 # below is arm_<name>. motion_node resolves dict → ordered list at load time
 # and fails fast with a clear error on any mismatch.
+#
+# motion_node refuses to execute /robopong/throw while every throw_waypoint
+# leaves the arm at ready_joints (override with ~allow_placeholder:=true).
 # =============================================================================
 
-# "Ready to throw" pose — arm starts here before every throw.
-# Lab-confirmed (captured from /joint_states on the UR5e). pan_joint is
-# overridden by the aim model at throw time, so its value here is just a
-# neutral starting point.
+# "Ready to throw" pose — arm starts here before every throw. The first
+# segment of the throw trajectory is implicitly: ready_joints (with pan
+# overridden by aim) → throw_waypoints[0]. Lab-confirmed; pan_joint is
+# overridden by the aim model at throw time.
 ready_joints:
-  arm_shoulder_pan_joint:  -0.154633
-  arm_shoulder_lift_joint: -1.237725
-  arm_elbow_joint:          2.560938
-  arm_wrist_1_joint:       -1.371239
-  arm_wrist_2_joint:        1.376385
-  arm_wrist_3_joint:        2.887977
+  arm_shoulder_pan_joint:   0.005383
+  arm_shoulder_lift_joint: -0.868382
+  arm_elbow_joint:          2.596068
+  arm_wrist_1_joint:       -1.529950
+  arm_wrist_2_joint:        1.568467
+  arm_wrist_3_joint:        0.060191
 
-# Throw trajectory — list of JointTrajectoryPoints.
-# DEPRECATED: kept only so the placeholder-guard logic still runs. The Ruckig
-# planner ignores this block and uses release_joints / follow_through_joints
-# below instead.
-waypoints:
-  - time_from_start: 0.0
-    joints: {}
-  - time_from_start: 0.5
-    joints: {}
-
-# State B — joint angles at the throw release point (ball leaves the scoop).
-# Sparse dict: list only joints that differ from ready_joints. Joint VELOCITIES
-# at this point are set separately via the ~v_shoulder and ~v_wrist ROS params
-# (motion_node), not here. Pan is overridden by the aim model.
+# Throw trajectory — list of waypoints the arm passes through AFTER the
+# implicit aimed-ready state. Ruckig plans N segments for N waypoints:
+#   aimed_ready → wp[0] → wp[1] → ... → wp[N-1]
+# Each segment is one state-to-state Ruckig call (boundary conditions taken
+# from the two waypoints), then concatenated into one JointTrajectory.
 #
-# To capture: jog the arm to the desired release pose (teach pendant or
-# scripts2/move_to_*.sh), then `rostopic echo /joint_states -n 1`.
-release_joints:
-  arm_shoulder_lift_joint: -0.7377   # TUNE — these values caused a self-collision
-  arm_wrist_1_joint:       -0.1712   # TUNE — replace with lab-captured pose
-
-# State C — follow-through pose. Both throw joints decelerate back to zero
-# velocity here. Should be a safe pose with no contact and no operator in arc.
-# Same sparse-dict format as release_joints.
-follow_through_joints:
-  arm_shoulder_lift_joint: -0.40     # TUNE
-  arm_wrist_1_joint:        0.20     # TUNE
+# Each entry may set:
+#   name           : free-form label, surfaced in throw_debug for tracing.
+#   joints         : sparse dict of position targets (rad). Joints not listed
+#                    default to ready_joints. Pan is overridden by aim at
+#                    runtime.
+#   velocities     : sparse dict of velocity targets at this waypoint (rad/s).
+#                    Joints not listed default to 0. Sign is explicit —
+#                    positive means joint angle increasing through this
+#                    waypoint, negative means decreasing. The final waypoint
+#                    should usually have all zeros so the arm stops cleanly.
+#   accelerations  : sparse dict of acceleration targets (rad/s^2). Optional;
+#                    joints not listed default to 0. Almost always leave at 0
+#                    — non-zero is only useful if you want the joint still
+#                    accelerating (or decelerating) AT this waypoint.
+#   duration       : optional float (seconds). When set, the segment ENDING
+#                    at this waypoint is pinned to this duration via Ruckig's
+#                    minimum_duration. Omit/null to let Ruckig pick the
+#                    time-optimal duration.
+#
+# Lab tuning knob: ~velocity_scale ROS param multiplies every velocity in
+# every waypoint at planning time (default 1.0). Useful for slow first throws
+# without editing yaml — e.g. roslaunch ... velocity_scale:=0.25 for 1/4 speed.
+#
+# To capture a waypoint pose: jog the arm via Freedrive, then
+#   rostopic echo -n 1 /joint_states
+# and copy the joints that should differ from ready_joints into the `joints`
+# block here.
+throw_waypoints:
+  # Trajectory: ready -> windup -> abrupt_stop. Arm flows through windup
+  # (non-zero velocities) and only stops at abrupt_stop. Three poses total,
+  # two segments, one stop — at the end.
+  #
+  # Velocities at windup are sized so each joint decelerates monotonically
+  # from windup -> abrupt_stop within max_a. (Lab-captured release pose was
+  # dropped because it's a direction reversal — elbow/wrist would HAVE to
+  # stop there regardless of yaml velocities. Recapture release between
+  # windup and abrupt_stop for a true flow-through 3-waypoint trajectory.)
+  - name: windup
+    joints:
+      arm_elbow_joint:          1.373113
+      arm_shoulder_lift_joint: -0.911224
+      arm_wrist_1_joint:       -0.230433
+    velocities:
+      arm_elbow_joint:         -3.0     # negative: continuing into abrupt_stop
+      arm_shoulder_lift_joint: -1.0
+      arm_wrist_1_joint:        1.0     # positive: small remaining distance
+    accelerations: {}
+  - name: abrupt_stop
+    joints:
+      arm_elbow_joint:          0.712187
+      arm_shoulder_lift_joint: -1.123900
+      arm_wrist_1_joint:       -0.183295
+    velocities: {}
+    accelerations: {}
 
 # Aim model:
 #   base_angle = atan2(cup_y - base_offset_y, cup_x - base_offset_x) + aim_trim
@@ -72,13 +104,19 @@ safety:
   base_joint_max:  1.5708
 
 # Ruckig kinematic limits used by the time-optimal throw planner.
-# Lists are indexed by joint name (sorted alphabetically), then remapped
-# to the MoveIt active-joint order at load time. shoulder_lift and wrist_1
-# get higher headroom because they drive the throw; everything else is
-# capped conservatively.
+# Lists are indexed by joint_order (sorted alphabetically), then remapped
+# to the MoveIt active-joint order at load time. Throw-driving joints get
+# higher headroom; everything else is capped conservatively.
 ruckig_limits:
   joint_order: [arm_elbow_joint, arm_shoulder_lift_joint, arm_shoulder_pan_joint,
                 arm_wrist_1_joint, arm_wrist_2_joint, arm_wrist_3_joint]
   max_velocity:     [3.14, 4.0,  3.14, 6.0,  3.14, 3.14]   # rad/s
-  max_acceleration: [5.0,  12.0, 5.0,  15.0, 5.0,  5.0]    # rad/s^2
-  max_jerk:         [20.0, 40.0, 20.0, 50.0, 20.0, 20.0]   # rad/s^3
+  # Elbow max_acceleration raised 5 -> 12 so it can both accelerate to the
+  # high release-waypoint velocity AND decelerate hard in follow-through
+  # (the deceleration jerk is what flings the ball off the scoop).
+  max_acceleration: [12.0, 12.0, 5.0,  15.0, 5.0,  5.0]    # rad/s^2
+  # Elbow + wrist_1 max_jerk doubled (20 -> 40 elbow, 50 -> 80 wrist_1) so
+  # Ruckig can ramp acceleration faster — both for reaching peak release
+  # velocity quickly and for snapping to zero in follow-through (the jerk
+  # is what flings the ball).
+  max_jerk:         [40.0, 40.0, 20.0, 80.0, 20.0, 20.0]   # rad/s^3
