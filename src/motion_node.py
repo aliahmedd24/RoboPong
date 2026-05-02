@@ -242,6 +242,14 @@ class MotionNode:
             rospy.logwarn(
                 f"Final throw_waypoint '{throw_waypoints[-1]['name']}' has "
                 f"non-zero velocities; arm will not stop at end of throw.")
+        # Intermediate waypoints should carry non-zero velocity through —
+        # otherwise the throw degenerates into discrete carry-and-place moves.
+        for wp in throw_waypoints[:-1]:
+            if not any(v != 0.0 for v in wp["velocities"]):
+                rospy.logwarn(
+                    f"Intermediate throw_waypoint '{wp['name']}' has all-zero "
+                    f"velocities; the arm will fully stop here, defeating the "
+                    f"release-with-velocity design.")
 
         return ready_ordered, aim, safety, ruckig_limits, throw_waypoints
 
