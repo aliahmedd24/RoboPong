@@ -98,12 +98,12 @@ class MotionNode:
     # offsets are tuned so the scoop face stays normal-ish to the
     # acceleration vector through the swing — retune in the lab.
     LAUNCH_JOINTS = {
-        "arm_shoulder_pan_joint":  -0.022518,
-        "arm_shoulder_lift_joint": -0.958174,
-        "arm_elbow_joint":          1.899617,   # ~ -0.40 rad from ready (forward extension)
-        "arm_wrist_1_joint":       -1.418120,   # ~ +0.40 rad from ready (tilt scoop into arc)
-        "arm_wrist_2_joint":        1.581821,
-        "arm_wrist_3_joint":        0.060184,
+        "arm_shoulder_pan_joint":  -0.023565,
+        "arm_shoulder_lift_joint": -1.050000,   # less truncated; more sweep, still rising at brake
+        "arm_elbow_joint":          1.400000,   # large forward extension (Δ ~0.9 rad), elbow is the launcher
+        "arm_wrist_1_joint":       -1.000000,   # KEEP scoop face angled up-forward at brake
+        "arm_wrist_2_joint":        1.581403,
+        "arm_wrist_3_joint":        0.060168,
     }
 
     # Aim model:
@@ -125,9 +125,9 @@ class MotionNode:
     # Per-joint Ruckig kinematic limits, indexed [shoulder_lift, elbow, wrist_1].
     # shoulder_lift carries the heavy sweep, wrist_1 is the snappy scoop tilt
     # joint so it can take a higher jerk/acc.
-    DEFAULT_MAX_VELOCITY     = (3.0, 3.0,  6.0)   # rad/s
-    DEFAULT_MAX_ACCELERATION = (12.0, 12.0, 25.0) # rad/s^2
-    DEFAULT_MAX_JERK         = (80.0, 80.0, 200.0) # rad/s^3
+    DEFAULT_MAX_VELOCITY     = (3.0, 4.0,  6.0)   # rad/s — elbow vmax raised to allow -3.5 rad/s release
+    DEFAULT_MAX_ACCELERATION = (20.0, 20.0, 25.0) # rad/s^2
+    DEFAULT_MAX_JERK         = (60.0, 60.0, 120.0) # rad/s^3
     DEFAULT_CONTROL_CYCLE    = 0.008  # s (matches UR servo loop)
 
     # Velocities at the launch pose, signed (rad/s). Each is the velocity of
@@ -137,7 +137,7 @@ class MotionNode:
     #   shoulder_lift: pose A → B is decreasing (negative) → release neg
     #   elbow:         pose A → B is decreasing (negative) → release neg
     #   wrist_1:       pose A → B is increasing (positive) → release pos
-    DEFAULT_RELEASE_VELOCITY = (-2.5, -2.0, 4.0)
+    DEFAULT_RELEASE_VELOCITY = (-2.5, -3.5, 1.0)
 
     # Hold after the trajectory action returns, to ensure the controller has
     # fully nulled residual velocity before we accept new commands.

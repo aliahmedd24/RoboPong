@@ -43,19 +43,19 @@
          elbow  decreasing -> negative
          wrist1 increasing -> positive (snaps the scoop into the arc) -->
     <arg name="release_velocity_lift"   default="-2.5" />
-    <arg name="release_velocity_elbow"  default="-2.0" />
-    <arg name="release_velocity_wrist1" default="4.0"  />
+    <arg name="release_velocity_elbow"  default="-3.5" />
+    <arg name="release_velocity_wrist1" default="1.0"  />
 
     <!-- Per-joint Ruckig kinematic limits -->
     <arg name="max_velocity_lift"     default="3.0"  />
-    <arg name="max_velocity_elbow"    default="3.0"  />
+    <arg name="max_velocity_elbow"    default="4.0"  />
     <arg name="max_velocity_wrist1"   default="6.0"  />
-    <arg name="max_acceleration_lift"   default="12.0" />
-    <arg name="max_acceleration_elbow"  default="12.0" />
+    <arg name="max_acceleration_lift"   default="20.0" />
+    <arg name="max_acceleration_elbow"  default="20.0" />
     <arg name="max_acceleration_wrist1" default="25.0" />
-    <arg name="max_jerk_lift"   default="80.0"  />
-    <arg name="max_jerk_elbow"  default="80.0"  />
-    <arg name="max_jerk_wrist1" default="200.0" />
+    <arg name="max_jerk_lift"   default="60.0"  />
+    <arg name="max_jerk_elbow"  default="60.0"  />
+    <arg name="max_jerk_wrist1" default="120.0" />
 
     <arg name="control_cycle"        default="0.008" />  <!-- s, Ruckig sample period -->
 
