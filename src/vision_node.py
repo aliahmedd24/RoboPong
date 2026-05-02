@@ -19,7 +19,6 @@ Publishes to:
     /robopong/vision_debug      - sensor_msgs/Image (annotated debug feed)
 
 Parameters:
-    cup_color       : "green" (placeholder) or "red" (real cup)
     z_height        : float, table surface Z in base frame (default 0.72)
     min_area        : minimum contour area to consider (default 500)
     smoothing_frames: number of frames to average position over (default 5)
@@ -38,15 +37,9 @@ from geometry_msgs.msg import PointStamped
 from cv_bridge import CvBridge
 
 # -----------------------------------------------------------------------
-# HSV COLOR RANGES
+# HSV COLOR RANGES — red wraps around in HSV, hence two ranges
 # -----------------------------------------------------------------------
 
-# Green cup (placeholder mug)
-# Tune these if detection is off under lab lighting
-GREEN_LOWER = np.array([35, 40, 40])
-GREEN_UPPER = np.array([85, 255, 255])
-
-# Red cup (real cup - red wraps around in HSV so we need two ranges)
 RED_LOWER_1 = np.array([0,   100, 100])
 RED_UPPER_1 = np.array([10,  255, 255])
 RED_LOWER_2 = np.array([160, 100, 100])
@@ -64,7 +57,6 @@ class VisionNode:
 
         # --- Parameters ---
         self.camera_topic   = rospy.get_param("~camera_topic", "/cam/color/image_raw")
-        self.cup_color      = rospy.get_param("~cup_color", "green")  # "green" or "red"
         self.z_height       = rospy.get_param("~z_height", 0.72)
         self.min_area       = rospy.get_param("~min_area", 500)
         self.smooth_frames  = rospy.get_param("~smoothing_frames", 5)
@@ -72,7 +64,6 @@ class VisionNode:
         self.base_frame     = rospy.get_param("~base_frame", "base")
 
         rospy.loginfo(f"Camera topic: {self.camera_topic}")
-        rospy.loginfo(f"Cup color: {self.cup_color}")
         rospy.loginfo(f"Min contour area: {self.min_area}")
 
         # --- Load calibration ---
@@ -235,19 +226,10 @@ class VisionNode:
         debug = frame.copy()
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
-        # Build color mask based on cup_color parameter
-        if self.cup_color == "green":
-            mask = cv2.inRange(hsv, GREEN_LOWER, GREEN_UPPER)
-
-        elif self.cup_color == "red":
-            # Red wraps around in HSV, need two ranges
-            mask1 = cv2.inRange(hsv, RED_LOWER_1, RED_UPPER_1)
-            mask2 = cv2.inRange(hsv, RED_LOWER_2, RED_UPPER_2)
-            mask = cv2.bitwise_or(mask1, mask2)
-
-        else:
-            rospy.logerr(f"Unknown cup_color: {self.cup_color}. Use 'green' or 'red'.")
-            return None, debug
+        # Red wraps around in HSV, so OR two ranges.
+        mask1 = cv2.inRange(hsv, RED_LOWER_1, RED_UPPER_1)
+        mask2 = cv2.inRange(hsv, RED_LOWER_2, RED_UPPER_2)
+        mask = cv2.bitwise_or(mask1, mask2)
 
         # Clean up mask with morphological operations
         kernel = np.ones((5, 5), np.uint8)
