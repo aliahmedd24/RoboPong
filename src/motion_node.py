@@ -76,20 +76,36 @@ def aim_shift(pose, aim):
 
 def ruckig_segment(p0, v0, a0, p1, v1, a1):
     inp = InputParameter(DOF)
-    inp.current_position, inp.current_velocity, inp.current_acceleration = p0, v0, a0
-    inp.target_position,  inp.target_velocity,  inp.target_acceleration  = p1, v1, a1
-    inp.max_velocity, inp.max_acceleration, inp.max_jerk = MAX_VEL, MAX_ACCEL, MAX_JERK
+    inp.current_position     = p0
+    inp.current_velocity     = v0
+    inp.current_acceleration = a0
+
+    inp.target_position      = p1
+    inp.target_velocity      = v1
+    inp.target_acceleration  = a1
+
+    inp.max_velocity         = MAX_VEL
+    inp.max_acceleration     = MAX_ACCEL
+    inp.max_jerk             = MAX_JERK
 
     out = OutputParameter(DOF)
     traj = []
-    otg = Ruckig(DOF, 0.001)
-    r = otg.update(inp, out)
-    while r == Result.Working:
-        traj.append((out.new_position[:], out.new_velocity[:], out.new_acceleration[:]))
+    ruckig = Ruckig(DOF, 0.001)
+    result = ruckig.update(inp, out)
+    while result == Result.Working:
+        traj.append((
+            out.new_position[:],
+            out.new_velocity[:],
+            out.new_acceleration[:]
+        ))
         out.pass_to_input(inp)
-        r = otg.update(inp, out)
-    if r == Result.Finished:
-        traj.append((out.new_position[:], out.new_velocity[:], out.new_acceleration[:]))
+        result = ruckig.update(inp, out)
+    if result == Result.Finished:
+        traj.append((
+            out.new_position[:],
+            out.new_velocity[:],
+            out.new_acceleration[:]
+        ))
     return traj
 
 
@@ -104,15 +120,19 @@ def build_throw_trajectory(aim):
 
 
 def send_trajectory(move_group, full_traj):
-    rt = RobotTrajectory()
-    rt.joint_trajectory.joint_names = JOINT_NAMES
-    rt.joint_trajectory.header.stamp = rospy.Time.now()
-    for i, (p, v, a) in enumerate(full_traj):
-        pt = JointTrajectoryPoint()
-        pt.positions, pt.velocities, pt.accelerations = p, v, a
-        pt.time_from_start = rospy.Duration((i + 1) * 0.001)   # avoid t=0
-        rt.joint_trajectory.points.append(pt)
-    move_group.execute(rt, wait=True)
+    robot_traj = RobotTrajectory()
+    robot_traj.joint_trajectory.joint_names = JOINT_NAMES
+    robot_traj.joint_trajectory.header.stamp = rospy.Time.now()
+
+    for i, (positions, velocities, accelerations) in enumerate(full_traj):
+        point = JointTrajectoryPoint()
+        point.positions     = positions
+        point.velocities    = velocities
+        point.accelerations = accelerations
+        point.time_from_start = rospy.Duration((i + 1) * 0.001)   # avoid t=0
+        robot_traj.joint_trajectory.points.append(point)
+
+    move_group.execute(robot_traj, wait=True)
 
 
 def move_to_ready(move_group, aim=0.0):
