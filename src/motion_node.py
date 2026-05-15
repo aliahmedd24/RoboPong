@@ -49,11 +49,11 @@ MAX_VEL   = [3.14, 3.14, 3.14, 0.5,  0.5,  0.5 ]   # rad/s
 MAX_ACCEL = [8.0,  8.0,  10.0, 2.0,  2.0,  2.0 ]   # rad/s²
 MAX_JERK  = [25.0, 25.0, 40.0, 10.0, 10.0, 10.0]   # rad/s³
 
-READY_POS   = [0.0,  0.000, -2.094,  0.0,  0.140,  0.0]   # A — cocked
-RELEASE_POS = [0.0,  0.524, -0.349,  0.0,  0.559,  0.0]   # B — release
-DECEL_POS   = [0.0,  0.698,  0.000,  0.0, -0.140,  0.0]   # C — follow-through
+READY_POS   = [-3.230,  -3.098, -2.148,  -0.799,  -1.545,  -3.244]   # A — cocked
+RELEASE_POS = [-3.230,  -2.299, -1.140,  -2.055,  -1.545,  -3.244]   # B — release
+DECEL_POS   = [-3.230,  -1.754,  -0.551,  -2.550, -1.545,  -3.244]   # C — follow-through
 
-OMEGA = 1.5   # rad/s — release velocity, both active joints
+OMEGA = 2.0   # rad/s — release velocity, both active joints
 RELEASE_VEL = [0.0, OMEGA, OMEGA, 0.0, 0.0, 0.0]
 
 CUP_STALE_S    = 2.0

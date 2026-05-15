@@ -35,7 +35,7 @@
          pose (with non-zero release velocities) brakes the arm abruptly and
          releases the ball. Pan + wrist_2/3 are held constant. -->
 
-    <node pkg="robopong" type="motion_node.py" name="motion_node" output="screen" />
+    <!--node pkg="robopong" type="motion_node.py" name="motion_node" output="screen" -->
 
     <!-- Phase 4: game orchestration (state machine) -->
     <!-- <node pkg="robopong" type="game_node.py" name="game_node" output="screen" /> -->
