@@ -45,16 +45,18 @@ JOINT_NAMES = [
 
 LIFT_IDX, ELBOW_IDX, WRIST1_IDX = 1, 2, 3   # indices into pose vectors
 
-MAX_VEL   = [3.14, 3.14, 3.14, 3.14,  0.5,  0.5 ]   # rad/s
+MAX_VEL   = [3.14, 0.5, 1.5, 1.0,  0.5,  0.5 ]   # rad/s
 MAX_ACCEL = [8.0,  8.0,  10.0, 20.0,  2.0,  2.0 ]   # rad/s²
 MAX_JERK  = [25.0, 25.0, 40.0, 20.0, 10.0, 10.0]   # rad/s³
 
+PICKUP_POS   = [-3.488, -3.118, -0.401, -2.563, -1.945, -3.207]   # A — cocked
 READY_POS   = [-3.230,  -3.098, -2.148,  -0.799,  -1.545,  -3.244]   # A — cocked
 RELEASE_POS = [-3.230,  -2.299, -1.140,  -2.055,  -1.545,  -3.244]   # B — release
 DECEL_POS   = [-3.230,  -1.408,  -0.412,  -3.049, -1.545,  -3.244]   # C — follow-through
 
-OMEGA = 2.8   # rad/s — release velocity, both active joints
-RELEASE_VEL = [0.0, OMEGA, OMEGA, -OMEGA, 0.0, 0.0]
+OMEGA = 1.0   # rad/s — release velocity, both active joints
+OMEGA_TEST = 1.5
+RELEASE_VEL = [0.0, 0.5, OMEGA_TEST, -OMEGA, 0.0, 0.0]
 
 CUP_STALE_S    = 2.0
 MOVE_VEL_SCALE = 0.3
@@ -190,6 +192,18 @@ def move_to_ready(move_group, aim=0.0):
     move_group.clear_pose_targets()
     if not ok:
         rospy.logerr("[motion] MoveIt failed to reach ready pose.")
+    return ok
+
+def move_to_pickup(move_group):
+    rospy.loginfo("[motion] Moving to pick up via MoveIt...")
+    move_group.set_joint_value_target(PICKUP_POS)
+    move_group.set_max_velocity_scaling_factor(MOVE_VEL_SCALE)
+    move_group.set_max_acceleration_scaling_factor(MOVE_ACC_SCALE)
+    ok = move_group.go(wait=True)
+    move_group.stop()
+    move_group.clear_pose_targets()
+    if not ok:
+        rospy.logerr("[motion] MoveIt failed to reach pick up pose.")
     return ok
 
 
@@ -351,6 +365,7 @@ class MotionNode:
 
         rospy.Subscriber('/robopong/cup_position', PointStamped,
                          self._cup_cb, queue_size=1)
+        rospy.Service('/robopong/pick_up',  Trigger, self._pick_up)
         rospy.Service('/robopong/go_ready',  Trigger, self._go_ready)
         rospy.Service('/robopong/throw',     Trigger, self._throw)
         rospy.Service('/robopong/plan_only', Trigger, self._plan_only)
@@ -358,6 +373,12 @@ class MotionNode:
 
     def _cup_cb(self, msg):
         self.cup = (msg.point.x, msg.point.y, msg.header.stamp)
+
+    def _pick_up(self, _req):
+        ok = move_to_pickup(self.move_group)
+        return TriggerResponse(success=ok,
+                               message="ready" if ok else "MoveIt failed")
+
 
     def _go_ready(self, _req):
         ok = move_to_ready(self.move_group, 0.0)
