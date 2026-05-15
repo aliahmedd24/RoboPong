@@ -48,10 +48,10 @@ class GameNode:
     def __init__(self):
         rospy.init_node('game_node')
 
-        self.ball_load_delay     = float(rospy.get_param('~ball_load_delay', 3.0))
+        self.ball_load_delay     = float(rospy.get_param('~ball_load_delay', 5.0))
         self.cup_wait_timeout    = float(rospy.get_param('~cup_wait_timeout', 10.0))
         self.cup_fresh_threshold = float(rospy.get_param('~cup_fresh_threshold', 2.0))
-        self.inter_round_delay   = float(rospy.get_param('~inter_round_delay', 10.0))
+        self.inter_round_delay   = float(rospy.get_param('~inter_round_delay', 12.0))
         service_timeout          = float(rospy.get_param('~service_timeout', 30.0))
 
         self._cup_stamp = None

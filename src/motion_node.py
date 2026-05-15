@@ -59,8 +59,8 @@ OMEGA = 2.5   # rad/s — release velocity, both active joints
 RELEASE_VEL = [0.0, OMEGA, OMEGA, -OMEGA, 0.0, 0.0]
 
 CUP_STALE_S    = 2.0
-MOVE_VEL_SCALE = 0.3
-MOVE_ACC_SCALE = 0.3
+MOVE_VEL_SCALE = 0.1
+MOVE_ACC_SCALE = 0.1
 
 # Base aim offset (rad) — tune in lab so shoulder_pan=0 + AIM_OFFSET points
 # at base +X. cup-angle is added on top per throw.
