@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 import rospy
 import moveit_commander
-from moveit_msgs.msg import RobotTrajectory
+from moveit_msgs.msg import RobotTrajectory, DisplayTrajectory
 from trajectory_msgs.msg import JointTrajectoryPoint
 from geometry_msgs.msg import PointStamped
 from std_srvs.srv import Trigger, TriggerResponse
@@ -43,18 +43,18 @@ JOINT_NAMES = [
     'arm_wrist_3_joint',
 ]
 
-LIFT_IDX, ELBOW_IDX = 1, 2   # indices into pose vectors
+LIFT_IDX, ELBOW_IDX, WRIST1_IDX = 1, 2, 3   # indices into pose vectors
 
-MAX_VEL   = [3.14, 3.14, 3.14, 0.5,  0.5,  0.5 ]   # rad/s
-MAX_ACCEL = [8.0,  8.0,  10.0, 2.0,  2.0,  2.0 ]   # rad/s²
-MAX_JERK  = [25.0, 25.0, 40.0, 10.0, 10.0, 10.0]   # rad/s³
+MAX_VEL   = [3.14, 3.14, 3.14, 3.14,  0.5,  0.5 ]   # rad/s
+MAX_ACCEL = [8.0,  8.0,  10.0, 20.0,  2.0,  2.0 ]   # rad/s²
+MAX_JERK  = [25.0, 25.0, 40.0, 20.0, 10.0, 10.0]   # rad/s³
 
 READY_POS   = [-3.230,  -3.098, -2.148,  -0.799,  -1.545,  -3.244]   # A — cocked
 RELEASE_POS = [-3.230,  -2.299, -1.140,  -2.055,  -1.545,  -3.244]   # B — release
-DECEL_POS   = [-3.230,  -1.754,  -0.551,  -2.550, -1.545,  -3.244]   # C — follow-through
+DECEL_POS   = [-3.230,  -1.408,  -0.412,  -3.049, -1.545,  -3.244]   # C — follow-through
 
-OMEGA = 2.0   # rad/s — release velocity, both active joints
-RELEASE_VEL = [0.0, OMEGA, OMEGA, 0.0, 0.0, 0.0]
+OMEGA = 2.8   # rad/s — release velocity, both active joints
+RELEASE_VEL = [0.0, OMEGA, OMEGA, -OMEGA, 0.0, 0.0]
 
 CUP_STALE_S    = 2.0
 MOVE_VEL_SCALE = 0.3
@@ -148,7 +148,7 @@ def generate_throw_trajectory(aim):
     return traj_A_to_B + traj_B_to_C
 
 
-def send_trajectory(move_group, full_traj):
+def build_robot_trajectory(full_traj):
     robot_traj = RobotTrajectory()
     robot_traj.joint_trajectory.joint_names = JOINT_NAMES
     robot_traj.joint_trajectory.header.stamp = rospy.Time.now()
@@ -160,6 +160,22 @@ def send_trajectory(move_group, full_traj):
         point.accelerations = accelerations
         point.time_from_start = rospy.Duration((i + 1) * 0.001)   # avoid t=0
         robot_traj.joint_trajectory.points.append(point)
+
+    return robot_traj
+
+
+def _publish_display(display_pub, robot_traj):
+    display_msg = DisplayTrajectory()
+    display_msg.model_id = "robot"
+    display_msg.trajectory.append(robot_traj)
+    display_pub.publish(display_msg)
+
+
+def send_trajectory(move_group, full_traj, display_pub=None):
+    robot_traj = build_robot_trajectory(full_traj)
+
+    if display_pub is not None:
+        _publish_display(display_pub, robot_traj)
 
     move_group.execute(robot_traj, wait=True)
 
@@ -182,7 +198,7 @@ def move_to_ready(move_group, aim=0.0):
 # ════════════════════════════════════════════════════════════════════════
 
 class ControllerRecorder:
-    """Buffers (t, lift_pos, lift_vel, elbow_pos, elbow_vel) between
+    """Buffers (t, lift_pos, lift_vel, elbow_pos, elbow_vel, wrist1_pos, wrist1_vel) between
     start() and stop(), reading from the FJT controller state topic."""
 
     def __init__(self):
@@ -191,12 +207,14 @@ class ControllerRecorder:
         self._t0 = None
         self._lift_i = None
         self._elbow_i = None
+        self._wrist1_i = None
 
     def start(self):
         self.samples = []
         self._t0 = rospy.Time.now()
         self._lift_i = None
         self._elbow_i = None
+        self._wrist1_i = None
         self._sub = rospy.Subscriber(CONTROLLER_STATE_TOPIC,
                                      JointTrajectoryControllerState,
                                      self._cb, queue_size=500)
@@ -209,8 +227,9 @@ class ControllerRecorder:
     def _cb(self, msg):
         if self._lift_i is None:
             try:
-                self._lift_i  = list(msg.joint_names).index('arm_shoulder_lift_joint')
-                self._elbow_i = list(msg.joint_names).index('arm_elbow_joint')
+                self._lift_i   = list(msg.joint_names).index('arm_shoulder_lift_joint')
+                self._elbow_i  = list(msg.joint_names).index('arm_elbow_joint')
+                self._wrist1_i = list(msg.joint_names).index('arm_wrist_1_joint')
             except ValueError:
                 return
         t = (rospy.Time.now() - self._t0).to_sec()
@@ -220,6 +239,8 @@ class ControllerRecorder:
             msg.actual.velocities[self._lift_i],
             msg.actual.positions[self._elbow_i],
             msg.actual.velocities[self._elbow_i],
+            msg.actual.positions[self._wrist1_i],
+            msg.actual.velocities[self._wrist1_i],
         ))
 
 
@@ -228,12 +249,13 @@ class ControllerRecorder:
 # ════════════════════════════════════════════════════════════════════════
 
 def _planned_rows(planned):
-    """(t, lift_p, lift_v, lift_a, el_p, el_v, el_a) per planned tick."""
+    """(t, lift_p, lift_v, lift_a, el_p, el_v, el_a, w1_p, w1_v, w1_a) per planned tick."""
     rows = []
     for i, (p, v, a) in enumerate(planned):
         rows.append(((i + 1) * 0.001,
-                     p[LIFT_IDX],  v[LIFT_IDX],  a[LIFT_IDX],
-                     p[ELBOW_IDX], v[ELBOW_IDX], a[ELBOW_IDX]))
+                     p[LIFT_IDX],   v[LIFT_IDX],   a[LIFT_IDX],
+                     p[ELBOW_IDX],  v[ELBOW_IDX],  a[ELBOW_IDX],
+                     p[WRIST1_IDX], v[WRIST1_IDX], a[WRIST1_IDX]))
     return rows
 
 
@@ -241,15 +263,16 @@ def _executed_rows(samples):
     """Differentiate velocity to get acceleration. Empty if no samples."""
     rows = []
     for i, s in enumerate(samples):
-        t, lp, lv, ep, ev = s
+        t, lp, lv, ep, ev, w1p, w1v = s
         if i == 0:
-            la = ea = 0.0
+            la = ea = w1a = 0.0
         else:
-            pt, _, plv, _, pev = samples[i - 1]
+            pt, _, plv, _, pev, _, pw1v = samples[i - 1]
             dt = t - pt
-            la = (lv - plv) / dt if dt > 0 else 0.0
-            ea = (ev - pev) / dt if dt > 0 else 0.0
-        rows.append((t, lp, lv, la, ep, ev, ea))
+            la  = (lv  - plv)  / dt if dt > 0 else 0.0
+            ea  = (ev  - pev)  / dt if dt > 0 else 0.0
+            w1a = (w1v - pw1v) / dt if dt > 0 else 0.0
+        rows.append((t, lp, lv, la, ep, ev, ea, w1p, w1v, w1a))
     return rows
 
 
@@ -265,17 +288,18 @@ def dump_and_plot(planned, executed_samples, label):
         w = csv.writer(f)
         w.writerow(['t', 'source',
                     'shoulder_lift_pos', 'shoulder_lift_vel', 'shoulder_lift_accel',
-                    'elbow_pos', 'elbow_vel', 'elbow_accel'])
+                    'elbow_pos', 'elbow_vel', 'elbow_accel',
+                    'wrist_1_pos', 'wrist_1_vel', 'wrist_1_accel'])
         for r in p_rows:
             w.writerow([r[0], 'planned',  *r[1:]])
         for r in e_rows:
             w.writerow([r[0], 'executed', *r[1:]])
 
-    fig, axes = plt.subplots(3, 2, figsize=(12, 8), sharex=True)
-    col_titles = ['shoulder_lift', 'elbow']
+    fig, axes = plt.subplots(3, 3, figsize=(16, 8), sharex=True)
+    col_titles = ['shoulder_lift', 'elbow', 'wrist_1']
     row_labels = ['position (rad)', 'velocity (rad/s)', 'accel (rad/s²)']
-    # in each row tuple: lift fields at cols 1,2,3 ; elbow at 4,5,6
-    col_offsets = [1, 4]
+    # in each row tuple: lift at 1,2,3 ; elbow at 4,5,6 ; wrist_1 at 7,8,9
+    col_offsets = [1, 4, 7]
 
     pt = [r[0] for r in p_rows]
     et = [r[0] for r in e_rows]
@@ -322,6 +346,8 @@ class MotionNode:
 
         self.cup = None
         self.recorder = ControllerRecorder()
+        self.display_pub = rospy.Publisher(
+            '/move_group/display_planned_path', DisplayTrajectory, queue_size=1)
 
         rospy.Subscriber('/robopong/cup_position', PointStamped,
                          self._cup_cb, queue_size=1)
@@ -359,6 +385,7 @@ class MotionNode:
             rospy.loginfo("[motion] plan_only aim=%.3f (no fresh cup)", aim)
 
         planned = generate_throw_trajectory(aim)
+        _publish_display(self.display_pub, build_robot_trajectory(planned))
         dump_and_plot(planned, executed_samples=None, label=label)
         return TriggerResponse(success=True,
                                message=f"planned aim={aim:.3f}")
@@ -388,7 +415,7 @@ class MotionNode:
         try:
             rospy.loginfo("[motion] Throw — %d points (%d ms), OMEGA=%.2f, aim=%.3f",
                           len(planned), len(planned), OMEGA, aim)
-            send_trajectory(self.move_group, planned)
+            send_trajectory(self.move_group, planned, self.display_pub)
             rospy.loginfo("[motion] Throw complete.")
         finally:
             self.recorder.stop()
