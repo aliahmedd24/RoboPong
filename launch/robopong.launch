@@ -34,52 +34,8 @@
          executed via moveit_commander; the controller's hold at the launch
          pose (with non-zero release velocities) brakes the arm abruptly and
          releases the ball. Pan + wrist_2/3 are held constant. -->
-    <arg name="move_group"           default="arm" />
-    <arg name="velocity_scaling"     default="1.0" />
-    <arg name="acceleration_scaling" default="1.0" />
 
-    <!-- Per-joint release velocities (rad/s, signed). Sign follows pose A→B:
-         lift   decreasing -> negative
-         elbow  decreasing -> negative
-         wrist1 increasing -> positive (snaps the scoop into the arc) -->
-    <arg name="release_velocity_lift"   default="-2.5" />
-    <arg name="release_velocity_elbow"  default="-3.5" />
-    <arg name="release_velocity_wrist1" default="1.0"  />
-
-    <!-- Per-joint Ruckig kinematic limits -->
-    <arg name="max_velocity_lift"     default="3.0"  />
-    <arg name="max_velocity_elbow"    default="4.0"  />
-    <arg name="max_velocity_wrist1"   default="6.0"  />
-    <arg name="max_acceleration_lift"   default="20.0" />
-    <arg name="max_acceleration_elbow"  default="20.0" />
-    <arg name="max_acceleration_wrist1" default="25.0" />
-    <arg name="max_jerk_lift"   default="60.0"  />
-    <arg name="max_jerk_elbow"  default="60.0"  />
-    <arg name="max_jerk_wrist1" default="120.0" />
-
-    <arg name="control_cycle"        default="0.008" />  <!-- s, Ruckig sample period -->
-
-    <node pkg="robopong" type="motion_node.py" name="motion_node" output="screen">
-        <param name="move_group"            value="$(arg move_group)" />
-        <param name="velocity_scaling"      value="$(arg velocity_scaling)" />
-        <param name="acceleration_scaling"  value="$(arg acceleration_scaling)" />
-
-        <param name="release_velocity_lift"   value="$(arg release_velocity_lift)"   />
-        <param name="release_velocity_elbow"  value="$(arg release_velocity_elbow)"  />
-        <param name="release_velocity_wrist1" value="$(arg release_velocity_wrist1)" />
-
-        <param name="max_velocity_lift"     value="$(arg max_velocity_lift)"     />
-        <param name="max_velocity_elbow"    value="$(arg max_velocity_elbow)"    />
-        <param name="max_velocity_wrist1"   value="$(arg max_velocity_wrist1)"   />
-        <param name="max_acceleration_lift"   value="$(arg max_acceleration_lift)"   />
-        <param name="max_acceleration_elbow"  value="$(arg max_acceleration_elbow)"  />
-        <param name="max_acceleration_wrist1" value="$(arg max_acceleration_wrist1)" />
-        <param name="max_jerk_lift"   value="$(arg max_jerk_lift)"   />
-        <param name="max_jerk_elbow"  value="$(arg max_jerk_elbow)"  />
-        <param name="max_jerk_wrist1" value="$(arg max_jerk_wrist1)" />
-
-        <param name="control_cycle"         value="$(arg control_cycle)" />
-    </node>
+    <node pkg="robopong" type="motion_node.py" name="motion_node" output="screen" />
 
     <!-- Phase 4: game orchestration (state machine) -->
     <!-- <node pkg="robopong" type="game_node.py" name="game_node" output="screen" /> -->
