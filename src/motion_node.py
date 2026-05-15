@@ -325,8 +325,9 @@ class MotionNode:
 
         rospy.Subscriber('/robopong/cup_position', PointStamped,
                          self._cup_cb, queue_size=1)
-        rospy.Service('/robopong/go_ready', Trigger, self._go_ready)
-        rospy.Service('/robopong/throw',    Trigger, self._throw)
+        rospy.Service('/robopong/go_ready',  Trigger, self._go_ready)
+        rospy.Service('/robopong/throw',     Trigger, self._throw)
+        rospy.Service('/robopong/plan_only', Trigger, self._plan_only)
         rospy.loginfo("[motion] Ready. Dumping plots to %s", OUTPUT_DIR)
 
     def _cup_cb(self, msg):
@@ -336,6 +337,31 @@ class MotionNode:
         ok = move_to_ready(self.move_group, 0.0)
         return TriggerResponse(success=ok,
                                message="ready" if ok else "MoveIt failed")
+
+    def _plan_only(self, _req):
+        # Dry-run: generate trajectory + dump plot, do NOT move the robot.
+        # Uses live cup if fresh; otherwise plans the unaimed (aim=AIM_OFFSET) throw.
+        cup = self.cup
+        if cup is not None:
+            cx, cy, stamp = cup
+            age = (rospy.Time.now() - stamp).to_sec()
+        else:
+            cx = cy = age = None
+
+        if cup is not None and age <= CUP_STALE_S:
+            aim = AIM_OFFSET + math.atan2(cy, cx)
+            label = "plan_only"
+            rospy.loginfo("[motion] plan_only aim=%.3f at cup=(%.3f, %.3f)",
+                          aim, cx, cy)
+        else:
+            aim = AIM_OFFSET
+            label = "plan_only_nocup"
+            rospy.loginfo("[motion] plan_only aim=%.3f (no fresh cup)", aim)
+
+        planned = generate_throw_trajectory(aim)
+        dump_and_plot(planned, executed_samples=None, label=label)
+        return TriggerResponse(success=True,
+                               message=f"planned aim={aim:.3f}")
 
     def _throw(self, _req):
         cup = self.cup
