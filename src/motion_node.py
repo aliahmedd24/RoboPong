@@ -74,49 +74,78 @@ def aim_shift(pose, aim):
     return out
 
 
-def ruckig_segment(p0, v0, a0, p1, v1, a1):
-    inp = InputParameter(DOF)
-    inp.current_position     = p0
-    inp.current_velocity     = v0
-    inp.current_acceleration = a0
+def generate_throw_trajectory(aim):
+    ready   = aim_shift(READY_POS,   aim)
+    release = aim_shift(RELEASE_POS, aim)
+    decel   = aim_shift(DECEL_POS,   aim)
 
-    inp.target_position      = p1
-    inp.target_velocity      = v1
-    inp.target_acceleration  = a1
+    # ── SEGMENT 1: A → B ─────────────────────────────────────────────────
+    inp = InputParameter(DOF)
+    inp.current_position     = ready
+    inp.current_velocity     = [0.0] * DOF
+    inp.current_acceleration = [0.0] * DOF
+
+    inp.target_position      = release
+    inp.target_velocity      = RELEASE_VEL   # non-zero: the throw velocity
+    inp.target_acceleration  = [0.0] * DOF   # zero: peak of ramp
 
     inp.max_velocity         = MAX_VEL
     inp.max_acceleration     = MAX_ACCEL
     inp.max_jerk             = MAX_JERK
 
     out = OutputParameter(DOF)
-    traj = []
-    ruckig = Ruckig(DOF, 0.001)
-    result = ruckig.update(inp, out)
+    traj_A_to_B = []
+    ruckig_AB = Ruckig(DOF, 0.001)
+    result = ruckig_AB.update(inp, out)
     while result == Result.Working:
-        traj.append((
+        traj_A_to_B.append((
             out.new_position[:],
             out.new_velocity[:],
             out.new_acceleration[:]
         ))
         out.pass_to_input(inp)
-        result = ruckig.update(inp, out)
+        result = ruckig_AB.update(inp, out)
     if result == Result.Finished:
-        traj.append((
+        traj_A_to_B.append((
             out.new_position[:],
             out.new_velocity[:],
             out.new_acceleration[:]
         ))
-    return traj
 
+    # ── SEGMENT 2: B → C ─────────────────────────────────────────────────
+    inp2 = InputParameter(DOF)
+    inp2.current_position     = release
+    inp2.current_velocity     = RELEASE_VEL   # hand off: arm still moving
+    inp2.current_acceleration = [0.0] * DOF   # was at velocity peak
 
-def build_throw_trajectory(aim):
-    ready   = aim_shift(READY_POS,   aim)
-    release = aim_shift(RELEASE_POS, aim)
-    decel   = aim_shift(DECEL_POS,   aim)
-    return (ruckig_segment(ready,   [0.0]*DOF,   [0.0]*DOF,
-                           release, RELEASE_VEL, [0.0]*DOF)
-            + ruckig_segment(release, RELEASE_VEL, [0.0]*DOF,
-                             decel,   [0.0]*DOF,   [0.0]*DOF))
+    inp2.target_position      = decel
+    inp2.target_velocity      = [0.0] * DOF   # come fully to rest
+    inp2.target_acceleration  = [0.0] * DOF
+
+    inp2.max_velocity         = MAX_VEL
+    inp2.max_acceleration     = MAX_ACCEL
+    inp2.max_jerk             = MAX_JERK
+
+    out2 = OutputParameter(DOF)
+    traj_B_to_C = []
+    ruckig_BC = Ruckig(DOF, 0.001)
+    result2 = ruckig_BC.update(inp2, out2)
+    while result2 == Result.Working:
+        traj_B_to_C.append((
+            out2.new_position[:],
+            out2.new_velocity[:],
+            out2.new_acceleration[:]
+        ))
+        out2.pass_to_input(inp2)
+        result2 = ruckig_BC.update(inp2, out2)
+    if result2 == Result.Finished:
+        traj_B_to_C.append((
+            out2.new_position[:],
+            out2.new_velocity[:],
+            out2.new_acceleration[:]
+        ))
+
+    return traj_A_to_B + traj_B_to_C
 
 
 def send_trajectory(move_group, full_traj):
@@ -323,7 +352,7 @@ class MotionNode:
         rospy.loginfo("[motion] Throw aim=%.3f at cup=(%.3f, %.3f)", aim, cx, cy)
 
         # Build the plan first so we still have something to plot if ready fails.
-        planned = build_throw_trajectory(aim)
+        planned = generate_throw_trajectory(aim)
 
         if not move_to_ready(self.move_group, aim):
             dump_and_plot(planned, executed_samples=None, label="ready_failed")
