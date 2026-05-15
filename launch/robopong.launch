@@ -37,7 +37,15 @@
 
     <!--node pkg="robopong" type="motion_node.py" name="motion_node" output="screen" -->
 
-    <!-- Phase 4: game orchestration (state machine) -->
-    <!-- <node pkg="robopong" type="game_node.py" name="game_node" output="screen" /> -->
+    <!-- Phase 4: game orchestration.
+         Sequences pick_up -> ball-load dwell -> wait-for-cup -> throw via the
+         motion_node services. Exposes /robopong/play_round (Trigger). -->
+    <!--
+    <node pkg="robopong" type="game_node.py" name="game_node" output="screen">
+        <param name="ball_load_delay"     value="3.0" />
+        <param name="cup_wait_timeout"    value="10.0" />
+        <param name="cup_fresh_threshold" value="2.0" />
+    </node>
+    -->
 
 </launch>
