@@ -7,6 +7,10 @@ Sequences the existing motion services to play one round:
 
 Exposes:
     /robopong/play_round  - std_srvs/Trigger, runs one full cycle.
+    /robopong/start_game  - std_srvs/Trigger, loops play_round with
+                            inter_round_delay between rounds.
+    /robopong/stop_game   - std_srvs/Trigger, halts the loop after the current
+                            round (or during the inter-round sleep).
 
 Subscribes to:
     /robopong/cup_position - geometry_msgs/PointStamped (freshness check only).
@@ -22,6 +26,7 @@ Parameters (~):
     cup_fresh_threshold : a cup_position is "fresh" if its stamp is within this
                           many seconds (default 2.0). Should match motion_node's
                           CUP_STALE_S.
+    inter_round_delay   : seconds between rounds in continuous mode (default 10.0).
     service_timeout     : seconds to wait for motion services to appear on
                           startup (default 30.0).
 """
@@ -46,12 +51,15 @@ class GameNode:
         self.ball_load_delay     = float(rospy.get_param('~ball_load_delay', 3.0))
         self.cup_wait_timeout    = float(rospy.get_param('~cup_wait_timeout', 10.0))
         self.cup_fresh_threshold = float(rospy.get_param('~cup_fresh_threshold', 2.0))
+        self.inter_round_delay   = float(rospy.get_param('~inter_round_delay', 10.0))
         service_timeout          = float(rospy.get_param('~service_timeout', 30.0))
 
         self._cup_stamp = None
         self._cup_lock = threading.Lock()
         # Serialize play_round calls — concurrent rounds would race the arm.
         self._round_lock = threading.Lock()
+        self._stop_event = threading.Event()
+        self._loop_thread = None
 
         self.status_pub = rospy.Publisher(
             '/robopong/game_status', String, queue_size=1, latch=True)
@@ -74,7 +82,11 @@ class GameNode:
         self.throw_srv    = rospy.ServiceProxy(THROW_SRV,    Trigger)
 
         rospy.Service('/robopong/play_round', Trigger, self._play_round)
-        rospy.loginfo("[game] Ready. Call /robopong/play_round to play one round.")
+        rospy.Service('/robopong/start_game', Trigger, self._start_game)
+        rospy.Service('/robopong/stop_game',  Trigger, self._stop_game)
+        rospy.loginfo(
+            "[game] Ready. /robopong/play_round (one shot) or "
+            "/robopong/start_game + /robopong/stop_game (continuous).")
 
     def _cup_cb(self, msg):
         with self._cup_lock:
@@ -144,6 +156,41 @@ class GameNode:
             return TriggerResponse(success=True, message="round complete")
         finally:
             self._round_lock.release()
+
+    def _start_game(self, _req):
+        if self._loop_thread is not None and self._loop_thread.is_alive():
+            return TriggerResponse(success=False, message="game already running")
+        self._stop_event.clear()
+        self._loop_thread = threading.Thread(target=self._game_loop, daemon=True)
+        self._loop_thread.start()
+        return TriggerResponse(success=True, message="game started")
+
+    def _stop_game(self, _req):
+        if self._loop_thread is None or not self._loop_thread.is_alive():
+            return TriggerResponse(success=False, message="game not running")
+        self._stop_event.set()
+        return TriggerResponse(success=True, message="stop requested")
+
+    def _game_loop(self):
+        rospy.loginfo("[game] Continuous loop started (inter_round_delay=%.1fs).",
+                      self.inter_round_delay)
+        while not self._stop_event.is_set() and not rospy.is_shutdown():
+            resp = self._play_round(None)
+            if not resp.success:
+                rospy.logwarn("[game] Round failed, stopping loop: %s",
+                              resp.message)
+                break
+            if self._stop_event.is_set():
+                break
+            # Sleep between rounds, but stay responsive to stop requests.
+            deadline = rospy.Time.now() + rospy.Duration(self.inter_round_delay)
+            rate = rospy.Rate(10.0)
+            while (not self._stop_event.is_set()
+                   and not rospy.is_shutdown()
+                   and rospy.Time.now() < deadline):
+                rate.sleep()
+        self._publish_status('IDLE')
+        rospy.loginfo("[game] Continuous loop stopped.")
 
 
 if __name__ == '__main__':

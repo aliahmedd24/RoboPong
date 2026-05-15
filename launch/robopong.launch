@@ -45,6 +45,7 @@
         <param name="ball_load_delay"     value="3.0" />
         <param name="cup_wait_timeout"    value="10.0" />
         <param name="cup_fresh_threshold" value="2.0" />
+        <param name="inter_round_delay"   value="10.0" />
     </node>
     -->
 
