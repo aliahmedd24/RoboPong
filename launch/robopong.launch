@@ -48,4 +48,8 @@
         <param name="inter_round_delay"   value="15.0" />
     </node>
 
+    <!-- Sound effects: subscribes to /robopong/game_status and plays
+         <state>.wav from sounds/ per transition. LOADING and AIMING loop. -->
+    <node pkg="robopong" type="sound_node.py" name="sound_node" output="screen" />
+
 </launch>

@@ -182,6 +182,14 @@ class GameNode:
                 break
             if self._stop_event.is_set():
                 break
+            # Park at the pickup pose so the inter-round wait happens there
+            # rather than wherever the throw trajectory ended.
+            self._publish_status('PICKUP')
+            ok, msg = self._call(self.pick_up_srv, 'pick_up')
+            if not ok:
+                rospy.logwarn("[game] Inter-round pickup failed: %s", msg)
+                self._publish_status('ERROR', msg)
+                break
             # Sleep between rounds, but stay responsive to stop requests.
             deadline = rospy.Time.now() + rospy.Duration(self.inter_round_delay)
             rate = rospy.Rate(10.0)

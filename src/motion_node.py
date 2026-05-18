@@ -195,7 +195,6 @@ def move_to_ready(move_group, aim=0.0):
     return ok
 
 def move_to_pickup(move_group):
-    rospy.loginfo("[motion] Moving to pick up via MoveIt...")
     move_group.set_joint_value_target(PICKUP_POS)
     move_group.set_max_velocity_scaling_factor(MOVE_VEL_SCALE)
     move_group.set_max_acceleration_scaling_factor(MOVE_ACC_SCALE)
