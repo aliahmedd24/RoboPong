@@ -3,12 +3,32 @@
     <xacro:include filename="$(find cu_ur5e_description)/urdf/mounted_arm.urdf.xacro" />
     <xacro:include filename="$(find cu_ur5e_description)/urdf/table.urdf.xacro" />
 
+    <link name="arm_scoop">
+        <visual>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <geometry>
+                <mesh filename="package://robopong/robots/meshes/scoop.stl" scale="0.001 0.001 0.001"/>
+            </geometry>
+            <material name="scoop_blue"/>
+        </visual>
+    </link>
+
+    <joint name="adapter_to_scoop" type="fixed">
+        <parent link="arm_ee_adapter"/>
+        <child link="arm_scoop"/>
+        <origin xyz="0 0 0.022" rpy="0 0 ${pi}"/>
+    </joint>
+
     <material name="wall_gray">
         <color rgba="0.7 0.7 0.7 1"/>
     </material>
 
     <material name="clearance_volume">
         <color rgba="0.6 0.4 0.2 0.2"/>
+    </material>
+
+    <material name="scoop_blue">
+        <color rgba="0.1 0.3 0.9 1"/>
     </material>
 
     <link name="wall_indent">

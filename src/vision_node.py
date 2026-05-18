@@ -24,16 +24,19 @@ Parameters:
     smoothing_frames: number of frames to average position over (default 5)
 """
 
+import math
+import os
+from collections import deque
+
 import rospy
 import cv2
 import numpy as np
 import yaml
-import os
-from collections import deque
 
 from sensor_msgs.msg import Image
 from std_msgs.msg import String
 from geometry_msgs.msg import PointStamped
+from visualization_msgs.msg import Marker
 from cv_bridge import CvBridge
 
 # -----------------------------------------------------------------------
@@ -100,11 +103,19 @@ class VisionNode:
             "/robopong/vision_status", String, queue_size=1)
         self.pub_debug = rospy.Publisher(
             "/robopong/vision_debug", Image, queue_size=1)
+        self.pub_marker = rospy.Publisher(
+            "/robopong/cup_marker", Marker, queue_size=1)
 
-        # --- Subscriber ---
+        # --- Subscribers ---
         self.sub = rospy.Subscriber(
             self.camera_topic, Image, self.image_callback, queue_size=1,
             buff_size=2**24)
+        # The bowl marker is decoupled from the camera so it tracks
+        # /robopong/cup_position regardless of who publishes (real vision,
+        # rostopic pub, sim helpers).
+        self.sub_cup = rospy.Subscriber(
+            "/robopong/cup_position", PointStamped, self.cup_position_callback,
+            queue_size=1)
 
         rospy.loginfo("Vision Node ready. Waiting for frames...")
 
@@ -212,6 +223,42 @@ class VisionNode:
             self.pub_debug.publish(debug_msg)
         except Exception as e:
             rospy.logerr(f"Debug publish error: {e}")
+
+    # -----------------------------------------------------------------------
+    # CUP MARKER
+    # -----------------------------------------------------------------------
+
+    def cup_position_callback(self, msg):
+        self.publish_cup_marker(msg.header, msg.point.x, msg.point.y)
+
+    def publish_cup_marker(self, header, x, y):
+        # Mesh's handle extends along its local +X (mesh X span -69 → +159 mm).
+        # Point that axis from the robot base outward to the cup so the handle
+        # always faces away from the robot.
+        yaw = math.atan2(y, x)
+
+        marker = Marker()
+        marker.header = header
+        marker.ns = "cup"
+        marker.id = 0
+        marker.type = Marker.MESH_RESOURCE
+        marker.action = Marker.ADD
+        marker.pose.position.x = x
+        marker.pose.position.y = y
+        marker.pose.position.z = self.z_height
+        marker.pose.orientation.z = math.sin(yaw / 2.0)
+        marker.pose.orientation.w = math.cos(yaw / 2.0)
+        marker.scale.x = 0.001
+        marker.scale.y = 0.001
+        marker.scale.z = 0.001
+        marker.color.r = 1.0
+        marker.color.g = 0.0
+        marker.color.b = 0.0
+        marker.color.a = 1.0
+        marker.mesh_resource = "package://robopong/robots/meshes/bowl_2.stl"
+        marker.mesh_use_embedded_materials = False
+        marker.lifetime = rospy.Duration(1.0)
+        self.pub_marker.publish(marker)
 
     # -----------------------------------------------------------------------
     # CUP DETECTION
