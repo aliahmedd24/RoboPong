@@ -52,17 +52,17 @@ OUTPUT_PATH = os.path.join(
 # workspace-local frame (origin at workspace center).
 # Order: Top-Left, Top-Right, Bottom-Right, Bottom-Left
 WORLD_POINTS = np.array([
-    [ 0.45,  0.35],   # Top-Left
-    [ 0.45, -0.35],   # Top-Right
-    [-0.45, -0.35],   # Bottom-Right
-    [-0.45,  0.35],   # Bottom-Left
+    [ 0.45,  0.40],   # Top-Left
+    [ 0.45, -0.40],   # Top-Right
+    [-0.45, -0.40],   # Bottom-Right
+    [-0.45,  0.40],   # Bottom-Left
 ], dtype=np.float32)
 
 # Position of the workspace center in the robot 'base' frame.
 # Measure via TF: `rosrun tf tf_echo base table_top` (or equivalent).
 # vision_node adds this offset to homography output so cup_position is
 # published in base frame.
-WORKSPACE_CENTER_IN_BASE = (1.775, 0.000)
+WORKSPACE_CENTER_IN_BASE = (2.200, 0.000)
 
 # -----------------------------------------------------------------------
 # GLOBALS

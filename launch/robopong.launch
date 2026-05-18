@@ -45,7 +45,7 @@
         <param name="ball_load_delay"     value="10.0" />
         <param name="cup_wait_timeout"    value="10.0" />
         <param name="cup_fresh_threshold" value="2.0" />
-        <param name="inter_round_delay"   value="15.0" />
+        <param name="inter_round_delay"   value="0.0" />
     </node>
 
     <!-- Sound effects: subscribes to /robopong/game_status and plays
