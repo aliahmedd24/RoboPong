@@ -52,10 +52,10 @@ OUTPUT_PATH = os.path.join(
 # workspace-local frame (origin at workspace center).
 # Order: Top-Left, Top-Right, Bottom-Right, Bottom-Left
 WORLD_POINTS = np.array([
-    [ 0.45,  0.40],   # Top-Left
-    [ 0.45, -0.40],   # Top-Right
-    [-0.45, -0.40],   # Bottom-Right
-    [-0.45,  0.40],   # Bottom-Left
+    [-0.45,  0.355],   # Top-Left
+    [ 0.45,  0.355],   # Top-Right
+    [ 0.45, -0.355],   # Bottom-Right
+    [-0.45, -0.355],   # Bottom-Left
 ], dtype=np.float32)
 
 # Position of the workspace center in the robot 'base' frame.

@@ -10,6 +10,7 @@ longer preempt earlier phrases — they queue behind them.
 
 import queue
 import random
+import subprocess
 import threading
 
 import rospy
@@ -30,7 +31,7 @@ PHRASES = {
 # Seconds to wait after publishing a phrase before the next one is sent.
 # Tune to roughly the spoken length of the longest phrase in each state's
 # pool. Piper-spoken short lines typically run ~0.7–1.5 s.
-DEFAULT_DURATION = 1.5
+DEFAULT_DURATION = 2.5
 DURATION = {
     'PICKUP':   1.5,
     'LOADING':  1.8,
@@ -90,6 +91,10 @@ class Commentator:
             if rospy.is_shutdown():
                 return
             self.say_pub.publish(String(data=phrase))
+            try:
+                subprocess.run(['espeak-ng', phrase], timeout=10.0)
+            except Exception as e:
+                rospy.logwarn("[commentator] espeak-ng failed: %s", e)
             rospy.sleep(DURATION.get(state, DEFAULT_DURATION))
 
 

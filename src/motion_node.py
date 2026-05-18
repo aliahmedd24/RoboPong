@@ -50,9 +50,9 @@ MAX_ACCEL = [8.0,  8.0,  10.0, 20.0,  2.0,  2.0 ]   # rad/s²
 MAX_JERK  = [25.0, 25.0, 40.0, 20.0, 10.0, 10.0]   # rad/s³
 
 PICKUP_POS   = [-3.488, -3.118, -0.401, -2.563, -1.945, -3.207]   # A — cocked
-READY_POS   = [-3.230,  -3.098, -2.148,  -0.799,  -1.545,  -3.244]   # A — cocked
-RELEASE_POS = [-3.230,  -2.299, -1.140,  -2.720,  -1.545,  -3.244]   # B — release
-DECEL_POS   = [-3.230,  -1.408,  -0.412,  -3.049, -1.545,  -3.244]   # C — follow-through
+READY_POS   = [-3.030,  -3.098, -2.148,  -0.799,  -1.545,  -3.244]   # A — cocked
+RELEASE_POS = [-3.030,  -2.299, -1.140,  -2.720,  -1.545,  -3.244]   # B — release
+DECEL_POS   = [-3.030,  -1.408,  -0.412,  -3.049, -1.545,  -3.244]   # C — follow-through
 
 OMEGA = 2.5   # rad/s — release velocity, both active joints
 #OMEGA_TEST = 1.5
