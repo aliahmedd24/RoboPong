@@ -2,4 +2,10 @@ __pycache__/
 *.pyc
 CLAUDE.md
 .vscode/
-/report
+/report/*
+!report/node_architecture.png
+!report/report.pdf
+!report/operator_view.png
+!report/pose_pickup.png
+!report/pose_ready.png
+!report/throw_pipeline.png

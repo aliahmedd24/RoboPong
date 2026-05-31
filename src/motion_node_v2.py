@@ -1,53 +1,7 @@
 #!/usr/bin/env python3
-"""
-RoboPong - Motion Node v2 (SCAFFOLD - NOT YET WIRED INTO LAUNCH)
------------------------------------------------------------------
-Physics-based throw solver — eventual drop-in replacement for
-motion_node.py. This file is Step 1 of the v2 PRD rollout: interface
-scaffold only, no solver math yet.
 
-What this scaffold does:
-  - ROS interface mirrors v1 plus /robopong/throw_debug (new publisher)
-    and /robopong/calibrate_throw (new Trigger).
-  - /robopong/record_landing is NOT advertised — it needs the
-    robopong/RecordLanding.srv type which has not been generated yet.
-  - ThrowSolver is a stub: solve() always returns None. /robopong/throw
-    therefore falls back to the v1 static-profile path (same math as
-    motion_node.py::_throw_at) when ~fallback_to_v1 is True.
-  - All new v2 parameters are parsed and logged, but are inert until the
-    corresponding step in the PRD lands (see each parameter below).
+# RoboPong - Motion Node v2 (UNUSED!!!)
 
-Subscribes:
-    /robopong/cup_position      geometry_msgs/PointStamped
-
-Publishes:
-    /robopong/motion_status     std_msgs/String  (latched)
-                                IDLE / READY / SOLVING / THROWING / ERROR:<stage>:<detail>
-    /robopong/throw_debug       std_msgs/String  (JSON per throw)
-
-Services:
-    /robopong/go_ready          std_srvs/Trigger
-    /robopong/throw             std_srvs/Trigger   — solves then executes
-    /robopong/calibrate_throw   std_srvs/Trigger   — stub (Step 6)
-
-Parameters (v1 compatible):
-    ~move_group                 default "arm"
-    ~throw_profile              default config/throw_profile.yaml
-    ~velocity_scaling           default 1.0
-    ~acceleration_scaling       default 1.0
-    ~cup_position_timeout       default 2.0
-    ~allow_placeholder          default False
-
-Parameters (new in v2 — parsed but inert in this scaffold):
-    ~solver_mode                "lookup" | "optimise" | "learned"  (default "lookup")
-    ~solver_data                default config/solver_data.yaml
-    ~solver_timeout             default 0.5               (Mode B only)
-    ~release_angle_rad          default None              (required once solver is active; Step 5)
-    ~z_release                  default None              (required once solver is active)
-    ~record_landings            default False             (Step 2)
-    ~fallback_to_v1             default True              (engaged in this scaffold)
-    ~bypass_moveit_timing       default False             (safety-gated; Step 7+)
-"""
 
 import json
 import os
